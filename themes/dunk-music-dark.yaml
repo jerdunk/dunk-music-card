@@ -1,0 +1,16 @@
+Dunk Music Dark:
+  primary-color: "#1ED760"
+  accent-color: "#1ED760"
+  primary-background-color: "#121212"
+  secondary-background-color: "#181818"
+  card-background-color: "#242424"
+  ha-card-background: "#242424"
+  primary-text-color: "#FFFFFF"
+  secondary-text-color: "#B3B3B3"
+  divider-color: "#333333"
+  ha-card-border-radius: "12px"
+  ha-card-box-shadow: "none"
+  modes:
+    dark:
+      primary-background-color: "#121212"
+      secondary-background-color: "#181818"

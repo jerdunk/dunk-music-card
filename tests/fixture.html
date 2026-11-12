@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="nl">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  /><title>Dunk Music test fixture</title
+  ><style>
+    body {
+      margin: 0;
+      background: white;
+      font-family: serif;
+      --primary-text-color: pink;
+      --ha-card-background: transparent;
+      --ha-card-border-radius: 90px;
+    }
+    dunk-music-card {
+      margin: 8px;
+    }</style
+  ><dunk-music-card></dunk-music-card>
+  <script type="module">
+    import "/dist/dunk-music.js";
+    const card = document.querySelector("dunk-music-card");
+    window.calls = [];
+    const track = (i) => ({
+      id: "t" + i,
+      uri: "spotify:track:t" + i,
+      name: "Nummer " + i,
+      type: "track",
+      artists: [{ name: "Artiest" }],
+      album: { name: "Album" },
+      duration_ms: 180000,
+    });
+    const spServices = [
+      "get_playlist_favorites",
+      "get_playlist_items",
+      "get_track_favorites",
+      "get_album_favorites",
+      "get_artists_followed",
+      "get_show_favorites",
+      "get_player_recent_tracks",
+      "search_all",
+      "get_player_queue_info",
+      "get_player_devices",
+      "player_media_play_context",
+      "player_media_play_tracks",
+      "player_transfer_playback",
+      "save_track_favorites",
+      "remove_track_favorites",
+      "add_player_queue_items",
+    ];
+    const serviceMap = (names) => Object.fromEntries(names.map((n) => [n, {}]));
+    const attrs = {
+      supported_features: 1048575,
+      media_title: "Externe Spotify-sessie",
+      media_artist: "Actieve artiest",
+      media_duration: 220,
+      media_position: 32,
+      volume_level: 0.45,
+      source: "iPhone",
+      repeat: "off",
+    };
+    window.hass = {
+      states: {
+        "media_player.spotify": { state: "playing", attributes: attrs },
+        "media_player.room": {
+          state: "idle",
+          attributes: {
+            ...attrs,
+            friendly_name: "Beneden",
+            media_title: undefined,
+          },
+        },
+        "media_player.offline": {
+          state: "unavailable",
+          attributes: { friendly_name: "Boven" },
+        },
+        "media_player.metz": {
+          state: "idle",
+          attributes: { friendly_name: "Metz TV Slaapkamer" },
+        },
+      },
+      services: {
+        spotifyplus: serviceMap(spServices),
+        music_assistant: serviceMap([
+          "search",
+          "get_library",
+          "play_media",
+          "get_queue",
+          "transfer_queue",
+        ]),
+        media_player: serviceMap([
+          "media_play",
+          "media_pause",
+          "media_next_track",
+          "media_previous_track",
+          "media_seek",
+          "volume_set",
+          "shuffle_set",
+          "repeat_set",
+          "join",
+          "unjoin",
+        ]),
+      },
+      callService: async (domain, service, data, target) => {
+        window.calls.push({ domain, service, data, target });
+      },
+      callWS: async (m) => {
+        window.calls.push(m);
+        if (m.type === "config/entity_registry/list")
+          return [
+            {
+              entity_id: "media_player.room",
+              platform: "music_assistant",
+              config_entry_id: "entry",
+            },
+          ];
+        if (m.type === "media_player/browse_media")
+          return {
+            children: [
+              {
+                media_content_id: "library://track/1",
+                media_content_type: "track",
+                title: "MA nummer",
+                can_play: true,
+                can_expand: false,
+              },
+            ],
+          };
+        if (m.domain === "music_assistant")
+          return {
+            response: {
+              items: [
+                {
+                  uri: "library://playlist/1",
+                  name: "MA collectie",
+                  media_type: "playlist",
+                },
+              ],
+            },
+          };
+        if (m.service === "get_playlist_items")
+          return {
+            response: {
+              result: {
+                items: Array.from({ length: 50 }, (_, i) => ({
+                  track: track(i + (m.service_data.offset || 0)),
+                })),
+                total: 100,
+                next: m.service_data.offset ? null : "next",
+              },
+            },
+          };
+        if (m.service === "get_player_devices")
+          return {
+            response: {
+              result: [
+                { id: "phone", name: "iPhone", is_active: true },
+                { id: "metz", name: "Metz TV Slaapkamer" },
+                { id: "laptop", name: "Laptop" },
+                {
+                  id: "blocked",
+                  name: "Beperkt apparaat",
+                  is_restricted: true,
+                },
+              ],
+            },
+          };
+        if (m.service === "search_all")
+          return { response: { result: { tracks: { items: [track(99)] } } } };
+        return {
+          response: {
+            result: {
+              items: Array.from({ length: 20 }, (_, i) => ({
+                id: "p" + i,
+                uri: "spotify:playlist:p" + i,
+                name: "Afspeellijst " + i,
+                type: "playlist",
+              })),
+              total: 20,
+              next: null,
+            },
+          },
+        };
+      },
+    };
+    card.setConfig({
+      type: "custom:dunk-music-card",
+      spotify_entity: "media_player.spotify",
+      ma_players: [
+        { entity: "media_player.room", name: "Beneden" },
+        { entity: "media_player.offline", name: "Boven" },
+        { entity: "media_player.metz" },
+      ],
+    });
+    card.hass = window.hass;
+    window.card = card;
+  </script>
+</html>
