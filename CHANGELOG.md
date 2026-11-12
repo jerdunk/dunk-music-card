@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Verhelpt afgewezen `shuffle`-parameters bij SpotifyPlus en Music Assistant: alleen verzenden als de actie het veld aanbiedt; nooit bij radio.
+- Expliciet shuffle-afspelen gebruikt waar nodig de ondersteunde standaardspeleractie.
+- Toont echte Home Assistant-foutmeldingen in plaats van `[object Object]`.
+- Regressietests met strikte oudere serviceschema’s voor beide koppelingen.
+
 ## 0.1.2
 
 - Combineert online Spotify-apparaten met de lokale SpotifyPlus-directory, inclusief slapende Google Cast-apparaten.

@@ -457,3 +457,64 @@ test("radio works without saved favorites or search services and logos need no e
     ),
   ).toBe("https://stream.qmusic.nl/qmusic/mp3");
 });
+test("radio sends no shuffle field to older MA and does not retry playback", async ({
+  page,
+}) => {
+  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await page.getByRole("button", { name: "Speel Qmusic", exact: true }).click();
+  const calls = await page.evaluate(() =>
+    window["calls"].filter((c) => c.service === "play_media"),
+  );
+  expect(calls).toHaveLength(1);
+  expect(calls[0].data).not.toHaveProperty("shuffle");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+test("plain HA websocket failure shows its message instead of object Object", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    window["hass"].callService = async () => {
+      throw {
+        code: "home_assistant_error",
+        message: "De gekozen luidspreker is onbereikbaar",
+      };
+    };
+  });
+  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await page.getByRole("button", { name: "Speel Qmusic", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "De gekozen luidspreker is onbereikbaar",
+  );
+  await expect(page.getByRole("alert")).not.toContainText("[object Object]");
+});
+test("Spotify playback is compatible with older schemas and shows structured errors", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const original = window["hass"].callService;
+    window["hass"].callService = async (d, s, data, target) => {
+      if (d === "spotifyplus" && "shuffle" in data)
+        throw { message: "not a valid option at 'shuffle'" };
+      return original(d, s, data, target);
+    };
+  });
+  await page
+    .getByRole("button", { name: "Afspeellijst 0 playlist", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Nummer 3 Artiest", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(() => {
+    window["hass"].callService = async () => {
+      throw { error: { message: "Geen actief Spotify-apparaat" } };
+    };
+  });
+  await page
+    .getByRole("button", { name: "Nummer 4 Artiest", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Geen actief Spotify-apparaat",
+  );
+  await expect(page.getByRole("alert")).not.toContainText("[object Object]");
+});

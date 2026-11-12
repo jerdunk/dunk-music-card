@@ -43,7 +43,7 @@ Een track zonder URI, lokaal item of expliciet onbeschikbaar item krijgt geen we
 - `get_library`: config_entry_id, media_type, limit:50, offset, optioneel favorite/order_by.
 - `search`: config_entry_id, name, media_type, limit:50.
 - `media_player/browse_media`: entity_id, media_content_id, media_content_type voor collectie-inhoud.
-- `play_media`: entity target, media_id, media_type, enqueue, shuffle; playlist-start via start_item.
+- `play_media`: entity target, media_id, media_type, enqueue; playlist-start via start_item.
 - `get_queue`: huidige en volgende item + totaal. **Geen API voor het volledig uitlezen/verwijderen/herordenen van queue-items via deze standaardservice.**
 - `transfer_queue`: doel als entity target, source_player en auto_play. Geen automatische overdracht bij bron- of kamerselectie.
 - `media_player.join`/`unjoin`: alleen bij GROUPING-feature; MA controleert compatibiliteit.
@@ -66,3 +66,7 @@ SpotifyPlus’ lokale directory retourneert `result.Items` met hoofdlettergevoel
 Bronnen: [SpotifyConnectDevices](https://github.com/thlucas1/SpotifyWebApiPython/blob/master/spotifywebapipython/models/spotifyconnectdevices.py), [SpotifyConnectDevice](https://github.com/thlucas1/SpotifyWebApiPython/blob/master/spotifywebapipython/models/spotifyconnectdevice.py).
 
 Radio: presets met gecontroleerde HTTP-audiostreams en gebundelde omroeplogo’s. MA-bibliotheekresultaten krijgen waar mogelijk voorrang; ontbrekende/lege radiozoekfunctie blokkeert presets niet. `music_assistant.play_media` accepteert URL’s als media_id; radio speelt op een expliciete MA-doelkamer. Het config_entry_id wordt eerst aan de geselecteerde, daarna andere geconfigureerde MA-spelers ontleend. Logoherkomst: docs/RADIO-SOURCES.md. Alleen de exacte gebundelde data-URL’s zijn toegestaan; willekeurige data/SVG/HTML blijft geblokkeerd.
+
+## v0.1.3: afspeelcompatibiliteit
+
+`shuffle` wordt alleen aan SpotifyPlus- of MA-afspeelacties toegevoegd als het runtime serviceregister dit veld aanbiedt (ook binnen UI-veldgroepen). Radio krijgt het veld nooit. Gewoon afspelen behoudt bij oudere services de bestaande shufflemodus. Expliciet shuffle-afspelen gebruikt anders `media_player.shuffle_set` na succesvolle playback, uitsluitend als service en spelerfeature beschikbaar zijn; ontbrekende ondersteuning blokkeert de actie vooraf met uitleg. Playback wordt niet automatisch opnieuw geprobeerd. Gewone en geneste Home Assistant-foutobjecten worden naar een leesbare melding vertaald.

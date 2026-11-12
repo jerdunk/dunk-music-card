@@ -103,6 +103,21 @@
       },
       callService: async (domain, service, data, target) => {
         window.calls.push({ domain, service, data, target });
+        // Model the installed older MA schema, not a permissive always-success stub.
+        if (domain === "music_assistant" && service === "play_media") {
+          const allowed = new Set([
+            "media_id",
+            "media_type",
+            "enqueue",
+            "start_item",
+          ]);
+          for (const key of Object.keys(data))
+            if (!allowed.has(key))
+              throw {
+                code: "voluptuous",
+                message: `not a valid option at '${key}'`,
+              };
+        }
       },
       callWS: async (m) => {
         window.calls.push(m);
