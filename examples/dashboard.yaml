@@ -1,0 +1,51 @@
+# Plak uitsluitend in de raw configuration editor van een NIEUW dashboard.
+# Stel dit thema NIET in als globaal profielthema.
+title: Dunk Music
+views:
+  - title: Muziek
+    path: muziek
+    icon: mdi:music
+    type: panel
+    theme: Dunk Music Dark
+    cards:
+      - type: custom:dunk-music-card
+        spotify_entity: media_player.woonkamer_spotifyplus_jeroen_dunk
+        default_source: spotify
+        default_player: media_player.beneden_2
+        ma_players:
+          - entity: media_player.beneden_2
+            name: Beneden
+          - entity: media_player.marshall_2
+            name: Marshall
+          - entity: media_player.nest_mini_boven
+            name: Boven
+          - entity: media_player.nest_mini_woonkamer
+            name: Woonkamer
+          # Controleer de integratie en entity_id in Ontwikkelaarstools.
+          # Wijzig naar media_player.nest_tv_woonkamer_2 indien dat de MA-speler is.
+          - entity: media_player.nest_tv_woonkamer
+            name: Google TV
+        excluded_devices:
+          - Metz TV Slaapkamer
+          - media_player.metz
+        accent_color: "#1ED760"
+        desktop_now_playing: true
+        mobile_compact: true
+        height: calc(100dvh - 72px)
+        navigation:
+          - Home
+          - Zoeken
+          - Bibliotheek
+          - Afspeellijsten
+          - Favorieten
+          - Recent afgespeeld
+          - Radio
+          - Wachtrij
+          - Instellingen
+        radio_stations:
+          - name: Qmusic
+          - name: Qmusic 90s & 00s
+          - name: Radio 538
+          - name: Radio Veronica
+          - name: Sky Radio
+          - name: NPO Radio 2

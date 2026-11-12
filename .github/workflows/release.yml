@@ -1,0 +1,26 @@
+name: Prepare draft release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: git diff --exit-code -- dist
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:e2e
+      - name: Build installation archive
+        run: zip -r dunk-music-v0.1.0.zip dist themes examples docs README.md CHANGELOG.md LICENSE hacs.json
+      - name: Create draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create v0.1.0 dist/dunk-music.js dunk-music-v0.1.0.zip --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.0" --notes-file docs/RELEASE-v0.1.0.md
