@@ -1,9 +1,10 @@
-# Dunk Music Card · v0.1.1
+# Dunk Music Card · v0.1.2
 
 Een installeerbare Home Assistant custom card voor SpotifyPlus, Music Assistant en radio. TypeScript + Lit, één lokaal JavaScript-bestand, Shadow DOM, geen extra OAuth-app, API-sleutels of externe server.
 
 - Collecties openen zonder afspelen; verticale nummerlijsten met originele playlistpositie, zoeken in geladen nummers en paginering.
 - Spotify-bibliotheek, favorieten, albums, artiesten, podcasts, recent afgespeeld, zoeken, wachtrij en Connect-apparaten via SpotifyPlus.
+- Lokale SpotifyPlus-apparaatdetectie, inclusief Google Cast; zes direct afspeelbare radiozenders met meegeleverde logo’s.
 - Music Assistant-bibliotheek, zoeken, radio, kamerselectie, volumes, expliciete wachtrijoverdracht en groeperen indien ondersteund.
 - Permanente minispeler, volledige speler, containerafhankelijke mobiele/tablet/desktopindeling en veilige scheiding tussen browsen en afspelen.
 - Apart view-thema **Dunk Music Dark**. Bestaande dashboards, integraties en Liquid Glass blijven behouden.
@@ -14,7 +15,7 @@ Een installeerbare Home Assistant custom card voor SpotifyPlus, Music Assistant 
 
 Zie [de volledige Nederlandstalige installatiehandleiding](docs/INSTALLATION.md).
 
-Handmatig: kopieer `dist/dunk-music.js` naar `/config/www/dunk-music/dunk-music.js`, registreer `/local/dunk-music/dunk-music.js?v=0.1.1` als JavaScript-module en gebruik [examples/dashboard.yaml](examples/dashboard.yaml) in een **nieuw** testdashboard.
+Handmatig: kopieer `dist/dunk-music.js` naar `/config/www/dunk-music/dunk-music.js`, registreer `/local/dunk-music/dunk-music.js?v=0.1.2` als JavaScript-module en gebruik [examples/dashboard.yaml](examples/dashboard.yaml) in een **nieuw** testdashboard.
 
 HACS: voeg `https://github.com/jerdunk/dunk-music-card` toe als custom repository, categorie Dashboard. Het bestand staat in `dist/`; een release bevat ook `dunk-music.js` als losse asset. HACS-installatie is beschikbaar zodra de implementatie op de default branch staat of een zichtbare release beschikbaar is. Een draft release is niet zichtbaar voor HACS.
 
@@ -33,4 +34,4 @@ npm audit --audit-level=moderate
 
 `dist/dunk-music.js` wordt meegeleverd en reproduceerbaar gecontroleerd in GitHub Actions. Tests gebruiken uitsluitend mocks; de testfixture maakt nooit verbinding met echte muziekspelers.
 
-[API-contracten](docs/API.md) · [Configuratie](docs/INSTALLATION.md#configuratie) · [Changelog](CHANGELOG.md) · [Releasevoorbereiding](docs/RELEASE-v0.1.1.md)
+[API-contracten](docs/API.md) · [Configuratie](docs/INSTALLATION.md#configuratie) · [Changelog](CHANGELOG.md) · [Release](docs/RELEASE-v0.1.2.md)

@@ -7,10 +7,10 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Controle | Resultaat |
 | --- | --- |
 | TypeScript strict + productiebuild | Geslaagd |
-| Vitest API-/datatests | 23 geslaagd |
-| Chromium mobiel 390 × 844 | 15 geslaagd |
-| Chromium tablet 820 × 1180 | 15 geslaagd |
-| Chromium desktop 1440 × 1000 | 15 geslaagd |
+| Vitest API-/datatests | 31 geslaagd |
+| Chromium mobiel 390 × 844 | 17 geslaagd |
+| Chromium tablet 820 × 1180 | 17 geslaagd |
+| Chromium desktop 1440 × 1000 | 17 geslaagd |
 | Kaartbreedte 320px binnen groter browservenster | Geen horizontale overflow, mobiele containerindeling |
 | Visuele inspectie mobiel en desktop | Uitgevoerd met testdata; iconen vervangen door consistente SVG's |
 | npm audit, alle afhankelijkheden | 0 kwetsbaarheden |
@@ -18,7 +18,7 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Firefox lokaal | Browser start niet: `Could not find profile folder`, ook met alternatieve tijdelijke map; geen productasserties uitgevoerd |
 | WebKit lokaal | Browser start niet door ontbrekende systeemlibraries; geen productasserties uitgevoerd |
 
-GitHub Actions bevat naast de 45 Chromium-scenario's ook 15 Firefox- en 15 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
+GitHub Actions bevat naast de 51 Chromium-scenario's ook 17 Firefox- en 17 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
 
 ### Gedekte regressies
 
@@ -26,7 +26,7 @@ GitHub Actions bevat naast de 45 Chromium-scenario's ook 15 Firefox- en 15 WebKi
 - Platte MA `limit`/`offset`-parameters: YAML UI-secties zijn geen geneste servicevelden.
 - Afspeellijst openen zonder muziekactie; verticale rijen; afspelen op oorspronkelijke positie 3 en 83 na pagineren/filteren.
 - MA-playlist `start_item`, play-all zonder ongeldige start-URI, onbeschikbare doelen blokkeren.
-- Bronwissel en radiosnelkoppeling zonder playback; externe Spotify-state zichtbaar houden.
+- Bronwissel en openen van Radio zonder playback; externe Spotify-state zichtbaar houden.
 - Veilige afbeeldings-URL's, Metz-uitsluiting, beperkte apparaten, expliciete Connect-overdracht.
 - Cache/deduplicatie, 429-backoff, zoek-debounce en verouderde responses negeren.
 - Permanente minispeler, volledig spelersvenster, Escape, containerqueries, globale themastijlen en hass-updates zonder verlies van zoektekst.
@@ -72,3 +72,7 @@ Alleen Chromium op een beperkte host: `npx playwright test --project=mobile --pr
 ## Update v0.1.1
 
 Nieuwe regressies: gecombineerde apparaatlijst, bronstoringen onafhankelijk afhandelen, MA-apparaten niet als Spotify-ID gebruiken, actieve iPhone behouden bij MA-keuze, actieve MA-kamer vinden en expliciete doelkamer niet overschrijven. Deze wijzigingen zijn met mocks getest; controle op de eigen Home Assistant blijft nodig.
+
+## v0.1.2
+
+Lokale SpotifyPlus-directory getest met het daadwerkelijke PascalCase-responsecontract, een Cast-apparaat zonder online-listvermelding, activated-ID-deduplicatie, Metz-filtering, falende lokale detectie en correct doorgeven van de transfer-ID. Radio getest zonder zoek-/bibliotheekservices, met naam-only YAML, werkelijk gedecodeerde gebundelde logo’s en afspelen van de gekozen stream via het juiste MA-target. De zes HTTP-streams gaven vanuit de ontwikkelomgeving 200/206 audio/mpeg. De gebruiker meldde nog v0.1.0 te gebruiken; nieuwe lokale detectie en radio zijn nog niet op diens HA-installatie getest.

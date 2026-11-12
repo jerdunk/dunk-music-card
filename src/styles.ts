@@ -14,6 +14,11 @@ export const styles = css`
     border-radius: 12px;
     overflow: hidden;
   }
+  .version {
+    font-size: 11px;
+    font-weight: 400;
+    margin-left: 8px;
+  }
   svg {
     vertical-align: middle;
   }
@@ -326,12 +331,15 @@ export const styles = css`
   }
   .device {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin: 8px 0;
   }
   .device > button:first-child {
-    flex: 1;
+    flex: 1 1 160px;
+    min-width: 0;
+    overflow-wrap: anywhere;
     text-align: left;
   }
   .device.active {

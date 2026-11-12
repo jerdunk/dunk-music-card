@@ -12,7 +12,6 @@ import {
   type ListedDevice,
   type Data,
   NAV,
-  RADIOS,
   excluded,
   position,
   time,
@@ -231,6 +230,13 @@ export class DunkMusicCard extends LitElement {
       this.busy = false;
     }
   }
+  private get radioView() {
+    return (
+      this.source === "radio" &&
+      ["Radio", "Home", "Zoeken"].includes(this.view) &&
+      !this.parent
+    );
+  }
   private async load(append = false) {
     if (!this.api || this.view === "Instellingen") return;
     const id = ++this.requestId;
@@ -250,14 +256,16 @@ export class DunkMusicCard extends LitElement {
               this.cursor,
               this.parent,
             )
-          : await this.api.ma(
-              this.view,
-              this.kind,
-              this.query,
-              Number(this.cursor),
-              this.player,
-              this.parent,
-            );
+          : this.radioView
+            ? await this.api.radio(this.query, Number(this.cursor), this.player)
+            : await this.api.ma(
+                this.view,
+                this.kind,
+                this.query,
+                Number(this.cursor),
+                this.player,
+                this.parent,
+              );
       if (id !== this.requestId) return;
       this.page = {
         ...p,
@@ -367,7 +375,7 @@ export class DunkMusicCard extends LitElement {
     void this.action(async () => {
       if (d.provider === "spotify") {
         await this.api!.sp("player_transfer_playback", {
-          device_id: d.id,
+          device_id: d.transferId ?? d.id,
           play:
             this.hass.states[this.config.spotify_entity]?.state === "playing",
         });
@@ -649,42 +657,37 @@ export class DunkMusicCard extends LitElement {
               </div>`
       }
       ${
-        this.source === "radio" && !this.parent
+        this.radioView
           ? html`<p class="muted">
-                Kies eerst de gewenste kamer. Snelkoppelingen zoeken echte
-                stations in Music Assistant.
+                Kies bovenaan een doelkamer en klik een zender om radio af te
+                spelen. De standaardzenders werken ook zonder opgeslagen
+                radiofavorieten.
               </p>
-              <div class="tiles">
-                ${(
-                  this.config.radio_stations ?? RADIOS.map((name) => ({ name }))
-                ).map(
-                  (r: any) =>
-                    html`<button
-                      class="tile"
-                      @click=${() => {
-                        if (r.uri)
-                          this.play({
-                            id: r.uri,
-                            uri: r.uri,
-                            title: r.name,
-                            artist: "",
-                            album: "",
-                            image: r.image ?? "",
-                            duration: 0,
-                            position: 0,
-                            kind: "radio",
-                            playable: true,
-                            browsable: false,
-                          });
-                        else {
-                          this.query = r.name;
-                          void this.load();
-                        }
-                      }}
-                    >
-                      ${this.art(r.image ?? "")}<b>${r.name}</b>
-                    </button>`,
-                )}
+              <div class="tiles radio-tiles">
+                ${items
+                  .filter((i) => i.kind === "radio")
+                  .map(
+                    (i) =>
+                      html`<button
+                        class="tile"
+                        aria-label=${`Speel ${i.title}`}
+                        ?disabled=${this.busy || (!this.api?.has("music_assistant", "play_media") && !!i.uri)}
+                        @click=${() => {
+                          if (i.uri) this.play(i);
+                          else {
+                            this.query = i.title;
+                            void this.load();
+                          }
+                        }}
+                      >
+                        ${this.art(i.image, i.title)}<span
+                          ><b>${i.title}</b
+                          ><small
+                            >${i.uri ? "Afspelen" : "Zoeken in Music Assistant"}</small
+                          ></span
+                        >
+                      </button>`,
+                  )}
               </div>
               <br />`
           : nothing
@@ -701,7 +704,7 @@ export class DunkMusicCard extends LitElement {
         )}
       </div>
       <div class="tracks" role="list" aria-label="Nummers">
-        ${tracks.map((i) => this.track(i))}
+        ${tracks.filter((i) => !this.radioView || i.kind !== "radio").map((i) => this.track(i))}
       </div>
       ${
         this.loading
@@ -720,7 +723,7 @@ export class DunkMusicCard extends LitElement {
   private settings() {
     return html`<div class="settings">
       <h1>Instellingen</h1>
-      <p>Dunk Music 0.1.1</p>
+      <p>Dunk Music 0.1.2</p>
       <p>Configuratie via kaart-YAML. Geen tokens of wachtwoorden nodig.</p>
       <p>
         Spotify: <code>${this.config.spotify_entity}</code> —
@@ -791,7 +794,7 @@ export class DunkMusicCard extends LitElement {
                 @click=${() => this.selectDevice(d)}
               >
                 ${d.name} ·
-                ${d.provider === "spotify" ? "Spotify Connect" : "Music Assistant"}
+                ${d.provider === "spotify" ? (d.cast ? "Spotify Connect · Google Cast" : d.local ? "Spotify Connect · Lokaal" : "Spotify Connect") : "Music Assistant"}
                 ·
                 ${!d.available ? "Niet beschikbaar" : d.active ? (d.provider === "spotify" ? "Actief" : "Speelt") : d.selected ? "Geselecteerd" : "Beschikbaar"}
               </button>
@@ -898,7 +901,7 @@ export class DunkMusicCard extends LitElement {
       style=${`--accent:${accent};--height:${height}`}
     >
       <header ?inert=${!!this.sheet}>
-        <strong>Dunk Music<span class="sr"> 0.1.1</span></strong
+        <strong>Dunk Music<small class="version"> v0.1.2</small></strong
         ><select
           aria-label="Muziekbron"
           .value=${this.source}

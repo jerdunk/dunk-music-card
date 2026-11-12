@@ -221,28 +221,40 @@ test("debounces search and ignores out-of-order responses", async ({
   await page.waitForTimeout(800);
   await expect(page.getByText("Verouderd resultaat")).toHaveCount(0);
 });
-test("radio chooses MA search and never starts playback from a search shortcut", async ({
+test("radio shows built-in logos and plays verified stream on explicit station click", async ({
   page,
 }) => {
   await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
-  await page.getByRole("button", { name: "NPO Radio 2", exact: true }).click();
+  const radio = page.getByRole("button", {
+    name: "Speel NPO Radio 2",
+    exact: true,
+  });
+  await expect(radio).toBeVisible();
   await expect
     .poll(() =>
-      page.evaluate(
-        () => window["calls"].filter((c) => c.service === "search").length,
-      ),
+      page
+        .locator(".radio-tiles img")
+        .evaluateAll(
+          (imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
+        ),
     )
-    .toBe(1);
-  expect(
-    await page.evaluate(
-      () =>
-        window["calls"].find((c) => c.service === "search").service_data
-          .media_type,
-    ),
-  ).toEqual(["radio"]);
+    .toBe(6);
   expect(
     await page.evaluate(() => window["calls"].filter((c) => !c.type)),
   ).toHaveLength(0);
+  await radio.click();
+  expect(
+    await page.evaluate(() =>
+      window["calls"].find((c) => c.service === "play_media"),
+    ),
+  ).toMatchObject({
+    domain: "music_assistant",
+    data: {
+      media_id: "https://icecast.omroep.nl/radio2-bb-mp3",
+      media_type: "radio",
+    },
+    target: { entity_id: "media_player.room" },
+  });
 });
 test("one list shows both providers; selecting MA does not transfer or start Spotify", async ({
   page,
@@ -372,4 +384,76 @@ test("choosing Music Assistant while only iPhone plays keeps iPhone now playing 
   expect(
     await page.evaluate(() => window["calls"].filter((c) => !c.type)),
   ).toHaveLength(0);
+});
+test("local Cast appears alongside iPhone and selects the SpotifyPlus directory ID", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const h = window["hass"];
+    h.services.spotifyplus.get_spotify_connect_devices = {};
+    const original = h.callWS;
+    h.callWS = async (m) =>
+      m.service === "get_spotify_connect_devices"
+        ? {
+            response: {
+              result: {
+                Items: [
+                  {
+                    Id: "cast-local",
+                    Name: "Nest Mini",
+                    IsChromeCast: true,
+                    IsInDeviceList: false,
+                    DiscoveryResult: { IsDynamicDevice: false },
+                  },
+                ],
+              },
+            },
+          }
+        : original(m);
+  });
+  await page.getByRole("button", { name: "Apparaten", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /iPhone · Spotify Connect/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Nest Mini · Spotify Connect · Google Cast · Beschikbaar",
+    })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        window["calls"].find((c) => c.service === "player_transfer_playback")
+          .data.device_id,
+    ),
+  ).toBe("cast-local");
+});
+test("radio works without saved favorites or search services and logos need no external requests", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    delete window["hass"].services.music_assistant.get_library;
+    delete window["hass"].services.music_assistant.search;
+  });
+  await page.route("https://**/*", (route) => route.abort());
+  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await expect(
+    page.getByRole("button", { name: "Speel Qmusic", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".radio-tiles img")
+        .evaluateAll(
+          (imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
+        ),
+    )
+    .toBe(6);
+  await page.getByRole("button", { name: "Speel Qmusic", exact: true }).click();
+  expect(
+    await page.evaluate(
+      () =>
+        window["calls"].find((c) => c.service === "play_media").data.media_id,
+    ),
+  ).toBe("https://stream.qmusic.nl/qmusic/mp3");
 });

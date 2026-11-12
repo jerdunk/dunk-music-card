@@ -1,14 +1,17 @@
-name: Prepare draft release
+name: Publish tested release
 on:
   workflow_dispatch:
-  # Bootstrap a draft from the implementation branch before its first merge.
   push:
-    branches: [feat/dunk-music-v0.1.0]
-    paths: [.github/workflows/release.yml]
+    branches: [main]
+    paths: [package.json, .github/workflows/release.yml]
 permissions:
   contents: write
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
 jobs:
   release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,20 +26,29 @@ jobs:
       - run: git diff --exit-code -- dist
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e
+      - name: Select version
+        run: |
+          node - <<'JS'
+          const fs = require('fs');
+          const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+          if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid release version');
+          fs.appendFileSync(process.env.GITHUB_ENV, `RELEASE_TAG=v${version}\n`);
+          JS
       - name: Build installation and source archives
         run: |
-          zip -r dunk-music-v0.1.1.zip dist themes examples docs README.md CHANGELOG.md LICENSE hacs.json
-          git archive --format=zip --prefix=dunk-music-card/ -o dunk-music-source-v0.1.1.zip HEAD
+          zip -r "dunk-music-$RELEASE_TAG.zip" dist themes examples docs README.md CHANGELOG.md LICENSE hacs.json
+          git archive --format=zip --prefix=dunk-music-card/ -o "dunk-music-source-$RELEASE_TAG.zip" HEAD
           cp dist/dunk-music.js dunk-music.js
-          sha256sum dunk-music.js dunk-music-v0.1.1.zip dunk-music-source-v0.1.1.zip > SHA256SUMS.txt
-      - name: Create or update draft only
+          sha256sum dunk-music.js "dunk-music-$RELEASE_TAG.zip" "dunk-music-source-$RELEASE_TAG.zip" > SHA256SUMS.txt
+      - name: Upload assets then publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.1.1 --json isDraft > release-status.json 2>/dev/null; then
+          if gh release view "$RELEASE_TAG" --json isDraft > release-status.json 2>/dev/null; then
             node -e 'if (!JSON.parse(require("fs").readFileSync("release-status.json", "utf8")).isDraft) { throw new Error("Refusing to replace a published release"); }'
-            gh release edit v0.1.1 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.1" --notes-file docs/RELEASE-v0.1.1.md
+            gh release edit "$RELEASE_TAG" --draft --target "$GITHUB_SHA" --title "Dunk Music $RELEASE_TAG" --notes-file "docs/RELEASE-$RELEASE_TAG.md"
           else
-            gh release create v0.1.1 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.1" --notes-file docs/RELEASE-v0.1.1.md
+            gh release create "$RELEASE_TAG" --draft --target "$GITHUB_SHA" --title "Dunk Music $RELEASE_TAG" --notes-file "docs/RELEASE-$RELEASE_TAG.md"
           fi
-          gh release upload v0.1.1 dunk-music.js dunk-music-v0.1.1.zip dunk-music-source-v0.1.1.zip SHA256SUMS.txt --clobber
+          gh release upload "$RELEASE_TAG" dunk-music.js "dunk-music-$RELEASE_TAG.zip" "dunk-music-source-$RELEASE_TAG.zip" SHA256SUMS.txt --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
