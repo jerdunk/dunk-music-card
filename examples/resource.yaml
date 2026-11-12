@@ -1,6 +1,6 @@
 # Handmatige installatie: toevoegen als dashboard-resource van type module.
-url: /local/dunk-music/dunk-music.js?v=0.1.2
+url: /local/dunk-music/dunk-music.js?v=0.1.3
 type: module
 # HACS gebruikt in plaats daarvan:
-# url: /hacsfiles/dunk-music-card/dunk-music.js?v=0.1.2
+# url: /hacsfiles/dunk-music-card/dunk-music.js?v=0.1.3
 # type: module

@@ -1,3 +1,4 @@
+import { errorMessage } from "../src/errors";
 import { describe, it, expect, vi } from "vitest";
 import { API } from "../src/api";
 import {
@@ -134,7 +135,6 @@ describe("supported API contracts", () => {
         entity_id: config.spotify_entity,
         context_uri: "spotify:playlist:p",
         offset_position: 23,
-        shuffle: false,
       },
       undefined,
     );
@@ -200,7 +200,6 @@ describe("supported API contracts", () => {
         media_type: "playlist",
         start_item: "library://track/1",
         enqueue: "replace",
-        shuffle: false,
       },
       { entity_id: "media_player.room" },
     );
@@ -516,5 +515,141 @@ describe("working radio presets", () => {
       "",
     );
     expect(safeImage("data:text/html,hello")).toBe("");
+  });
+});
+describe("MA shuffle compatibility", () => {
+  it.each([false, true])(
+    "never sends shuffle for radio (service advertises shuffle=%s)",
+    async (advertised) => {
+      const { api, hass } = setup({}, "music_assistant", "play_media");
+      hass.services.music_assistant.play_media = {
+        fields: advertised ? { shuffle: {} } : {},
+      };
+      await api.play(
+        false,
+        "media_player.room",
+        normalize({
+          uri: "https://stream.qmusic.nl/qmusic/mp3",
+          media_type: "radio",
+        }),
+      );
+      expect(vi.mocked(hass.callService).mock.calls[0][2]).not.toHaveProperty(
+        "shuffle",
+      );
+      expect(hass.callService).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("passes native shuffle only when installed service metadata advertises it", async () => {
+    const { api, hass } = setup({}, "music_assistant", "play_media");
+    hass.services.music_assistant.play_media = {
+      fields: { options: { fields: { shuffle: {} } } },
+    };
+    await api.play(
+      false,
+      "media_player.room",
+      normalize({ uri: "library://playlist/1", media_type: "playlist" }),
+      undefined,
+      true,
+    );
+    expect(vi.mocked(hass.callService).mock.calls[0][2]).toMatchObject({
+      shuffle: true,
+    });
+  });
+  it("uses standard shuffle_set after playback on older MA when player supports it", async () => {
+    const { api, hass } = setup({}, "music_assistant", "play_media");
+    hass.states["media_player.room"].attributes.supported_features = 32768;
+    hass.services.media_player = { shuffle_set: {} };
+    await api.play(
+      false,
+      "media_player.room",
+      normalize({ uri: "library://playlist/1", media_type: "playlist" }),
+      undefined,
+      true,
+    );
+    const calls = vi.mocked(hass.callService).mock.calls;
+    expect(calls.map((c) => c[1])).toEqual(["play_media", "shuffle_set"]);
+    expect(calls[0][2]).not.toHaveProperty("shuffle");
+    expect(calls[1][2]).toEqual({
+      entity_id: "media_player.room",
+      shuffle: true,
+    });
+  });
+  it("refuses unsupported explicit shuffle before starting any music", async () => {
+    const { api, hass } = setup({}, "music_assistant", "play_media");
+    await expect(
+      api.play(
+        false,
+        "media_player.room",
+        normalize({ uri: "library://playlist/1", media_type: "playlist" }),
+        undefined,
+        true,
+      ),
+    ).rejects.toThrow("Shuffle afspelen");
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+});
+describe("HA error messages", () => {
+  it.each([
+    [
+      { code: "voluptuous", message: "not a valid option at 'shuffle'" },
+      "not a valid option at 'shuffle'",
+    ],
+    [
+      {
+        error: {
+          code: "service_validation_error",
+          message: "Speler onbereikbaar",
+        },
+      },
+      "Speler onbereikbaar",
+    ],
+    [new Error("Verbinding verbroken"), "Verbinding verbroken"],
+    [{ code: "unknown_error" }, "Home Assistant-fout: unknown_error"],
+  ])("extracts a useful message from %j", (error, message) =>
+    expect(errorMessage(error)).toBe(message),
+  );
+  it("handles cyclic unknown objects without stringifying their contents", () => {
+    const e: any = {};
+    e.error = e;
+    expect(errorMessage(e)).toContain("Onbekende Home Assistant-fout");
+    expect(errorMessage(e)).not.toContain("[object Object]");
+  });
+});
+describe("Spotify playback optional fields", () => {
+  it("does not send shuffle when SpotifyPlus play-context lacks the field", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "player_media_play_context");
+    await api.play(
+      true,
+      "",
+      normalize({ uri: "spotify:playlist:p", type: "playlist" }),
+    );
+    expect(vi.mocked(hass.callService).mock.calls[0][2]).toEqual({
+      entity_id: config.spotify_entity,
+      context_uri: "spotify:playlist:p",
+    });
+  });
+  it("does not send shuffle to older track playback either", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "player_media_play_tracks");
+    await api.play(true, "", normalize(track));
+    expect(vi.mocked(hass.callService).mock.calls[0][2]).toEqual({
+      entity_id: config.spotify_entity,
+      uris: track.uri,
+    });
+  });
+  it("uses advertised SpotifyPlus shuffle support", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "player_media_play_context");
+    hass.services.spotifyplus.player_media_play_context = {
+      fields: { shuffle: {} },
+    };
+    await api.play(
+      true,
+      "",
+      normalize({ uri: "spotify:playlist:p", type: "playlist" }),
+      undefined,
+      true,
+    );
+    expect(vi.mocked(hass.callService).mock.calls[0][2]).toMatchObject({
+      shuffle: true,
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { errorMessage } from "./errors";
 import { configuredRadios, radioKey } from "./radios";
 import {
   type Hass,
@@ -21,6 +22,15 @@ export class API {
   ) {}
   has(domain: string, service: string) {
     return !!this.hass.services[domain]?.[service];
+  }
+  hasField(domain: string, service: string, field: string): boolean {
+    const visit = (fields: Data | undefined): boolean =>
+      !!fields &&
+      (Object.hasOwn(fields, field) ||
+        Object.values(fields).some(
+          (value) => value && typeof value === "object" && visit(value.fields),
+        ));
+    return visit(this.hass.services[domain]?.[service]?.fields);
   }
   async call(
     domain: string,
@@ -56,7 +66,7 @@ export class API {
     const old = this.cache.get(key);
     if (old && old.until > Date.now()) return old.value;
     const value = this.call(domain, service, data, true, target).catch((e) => {
-      if (/429|rate.?limit|too many/i.test(String(e?.message ?? e)))
+      if (/429|rate.?limit|too many/i.test(errorMessage(e)))
         this.cooldown = Date.now() + 60000;
       throw e;
     });
@@ -261,7 +271,7 @@ export class API {
     try {
       remote = await this.ma("Radio", "radio", query, offset, entity);
     } catch (e) {
-      note = `Music Assistant-radiozoekfunctie/bibliotheek niet geladen: ${e instanceof Error ? e.message : String(e)} De meegeleverde zenders blijven beschikbaar via Music Assistant-afspelen.`;
+      note = `Music Assistant-radiozoekfunctie/bibliotheek niet geladen: ${errorMessage(e)} De meegeleverde zenders blijven beschikbaar via Music Assistant-afspelen.`;
     }
     const items = presets.map((p) => {
       const match = remote.items.find(
@@ -301,7 +311,7 @@ export class API {
       results.forEach((result, index) => {
         if (result.status === "rejected") {
           this.deviceWarnings.push(
-            `${services[index]}: ${result.reason?.message ?? result.reason}`,
+            `${services[index]}: ${errorMessage(result.reason)}`,
           );
           return;
         }
@@ -382,7 +392,7 @@ export class API {
       const provider = index === 0 ? "spotify" : "music_assistant";
       if (result.status === "rejected") {
         warnings.push(
-          `${index === 0 ? "Spotify Connect" : "Music Assistant"}: ${result.reason?.message ?? result.reason}`,
+          `${index === 0 ? "Spotify Connect" : "Music Assistant"}: ${errorMessage(result.reason)}`,
         );
         return;
       }
@@ -442,20 +452,25 @@ export class API {
     if (!item.uri || !item.playable)
       throw new Error("Dit item is niet afspeelbaar.");
     if (spotify) {
-      if (parent && ["playlist", "album"].includes(parent.kind))
-        return this.sp("player_media_play_context", {
-          context_uri: parent.uri,
-          offset_position: item.position,
-          shuffle,
-        });
-      if (["playlist", "album", "artist", "show"].includes(item.kind))
-        return this.sp("player_media_play_context", {
-          context_uri: item.uri,
-          shuffle,
-        });
-      return this.sp("player_media_play_tracks", { uris: item.uri, shuffle });
+      let service = "player_media_play_tracks";
+      let data: Data = { uris: item.uri };
+      if (parent && ["playlist", "album"].includes(parent.kind)) {
+        service = "player_media_play_context";
+        data = { context_uri: parent.uri, offset_position: item.position };
+      } else if (["playlist", "album", "artist", "show"].includes(item.kind)) {
+        service = "player_media_play_context";
+        data = { context_uri: item.uri };
+      }
+      return this.playback(
+        "spotifyplus",
+        service,
+        { entity_id: this.config.spotify_entity, ...data },
+        this.config.spotify_entity,
+        shuffle,
+        true,
+      );
     }
-    return this.call(
+    return this.playback(
       "music_assistant",
       "play_media",
       {
@@ -465,10 +480,49 @@ export class API {
           ? { start_item: item.uri }
           : {}),
         enqueue: "replace",
-        shuffle,
       },
-      false,
+      entity,
+      shuffle,
+      item.kind !== "radio",
       { entity_id: entity },
     );
+  }
+  private async playback(
+    domain: string,
+    service: string,
+    data: Data,
+    entity: string,
+    shuffle: boolean,
+    allowShuffle: boolean,
+    target?: Data,
+  ) {
+    // Both integrations have older versions that reject even shuffle:false.
+    const nativeShuffle =
+      allowShuffle && this.hasField(domain, service, "shuffle");
+    const legacyShuffle = allowShuffle && shuffle && !nativeShuffle;
+    if (
+      legacyShuffle &&
+      (!this.has("media_player", "shuffle_set") ||
+        !(
+          (this.hass.states[entity]?.attributes.supported_features ?? 0) & 32768
+        ))
+    ) {
+      throw new Error(
+        "Shuffle afspelen wordt niet ondersteund door deze speler. Gebruik Alles afspelen.",
+      );
+    }
+    const result = await this.call(
+      domain,
+      service,
+      { ...data, ...(nativeShuffle ? { shuffle } : {}) },
+      false,
+      target,
+    );
+    if (legacyShuffle)
+      await this.call("media_player", "shuffle_set", {
+        entity_id: entity,
+        shuffle: true,
+      });
+    return result;
   }
 }

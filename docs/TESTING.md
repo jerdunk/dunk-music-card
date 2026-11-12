@@ -7,10 +7,10 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Controle | Resultaat |
 | --- | --- |
 | TypeScript strict + productiebuild | Geslaagd |
-| Vitest API-/datatests | 31 geslaagd |
-| Chromium mobiel 390 × 844 | 17 geslaagd |
-| Chromium tablet 820 × 1180 | 17 geslaagd |
-| Chromium desktop 1440 × 1000 | 17 geslaagd |
+| Vitest API-/datatests | 44 geslaagd |
+| Chromium mobiel 390 × 844 | 20 geslaagd |
+| Chromium tablet 820 × 1180 | 20 geslaagd |
+| Chromium desktop 1440 × 1000 | 20 geslaagd |
 | Kaartbreedte 320px binnen groter browservenster | Geen horizontale overflow, mobiele containerindeling |
 | Visuele inspectie mobiel en desktop | Uitgevoerd met testdata; iconen vervangen door consistente SVG's |
 | npm audit, alle afhankelijkheden | 0 kwetsbaarheden |
@@ -18,7 +18,7 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Firefox lokaal | Browser start niet: `Could not find profile folder`, ook met alternatieve tijdelijke map; geen productasserties uitgevoerd |
 | WebKit lokaal | Browser start niet door ontbrekende systeemlibraries; geen productasserties uitgevoerd |
 
-GitHub Actions bevat naast de 51 Chromium-scenario's ook 17 Firefox- en 17 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
+GitHub Actions bevat naast de 60 Chromium-scenario's ook 20 Firefox- en 20 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
 
 ### Gedekte regressies
 
@@ -43,7 +43,7 @@ Geen toegang tot de Home Assistant-installatie, Spotify-account of MA-server was
 6. Bevestig dat Metz onder geen enkele alias in apparaatselectie of MA-kamerkeuze verschijnt.
 7. Bevestig voor Google TV de echte MA-entiteit: met of zonder `_2`. Dit is niet automatisch geraden.
 8. Test MA zoeken, collectie-inhoud, playlist-start, radioresultaten, kamervolume, wachtrijoverdracht en groeperen van werkelijk compatibele apparaten. Controleer foutafhandeling van een ongeschikte combinatie.
-9. Test de zes radiozoekknoppen op de geïnstalleerde providers. Stationslogo's komen uit echte metadata; voeg geverifieerde URI's toe voor directe snelkoppelingen.
+9. Test de zes radiozenders op een beschikbare MA-kamer. Standaardstreams en logo’s zijn meegeleverd; controleer ook eigen zenders.
 10. Controleer echte iPhone/Android safe areas, Companion App, rotatie, scroll en touch-sliders. Browseremulatie is geen test op fysieke telefoons.
 11. Controleer dat Liquid Glass en het bestaande muziekdashboard ongewijzigd blijven.
 12. Test HACS custom-repository-installatie na merge/publicatie, een update/cacheverversing en rollback naar het oude dashboard.
@@ -76,3 +76,7 @@ Nieuwe regressies: gecombineerde apparaatlijst, bronstoringen onafhankelijk afha
 ## v0.1.2
 
 Lokale SpotifyPlus-directory getest met het daadwerkelijke PascalCase-responsecontract, een Cast-apparaat zonder online-listvermelding, activated-ID-deduplicatie, Metz-filtering, falende lokale detectie en correct doorgeven van de transfer-ID. Radio getest zonder zoek-/bibliotheekservices, met naam-only YAML, werkelijk gedecodeerde gebundelde logo’s en afspelen van de gekozen stream via het juiste MA-target. De zes HTTP-streams gaven vanuit de ontwikkelomgeving 200/206 audio/mpeg. De gebruiker meldde nog v0.1.0 te gebruiken; nieuwe lokale detectie en radio zijn nog niet op diens HA-installatie getest.
+
+## v0.1.3
+
+De gebruiker bevestigde `not a valid option at shuffle` bij radio en Spotify. Regressies dekken oudere MA- en SpotifyPlus-schema’s die dit veld afwijzen, native optionele veldondersteuning, standaard shuffle_set bij expliciet shuffle-afspelen, geen automatische playback-retry en leesbare gewone/geneste WebSocket-foutobjecten. 44 unit/API-tests en 60 lokale Chromium-scenario’s geslaagd; CI voert 100 browserscenario’s uit. De reparatie is nog niet op de echte Home Assistant-installatie afgespeeld. Controleer daar radio, Spotify-tracks/playlists en expliciet shuffle-afspelen na de update.

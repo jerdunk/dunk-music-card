@@ -1,3 +1,4 @@
+import { errorMessage } from "./errors";
 import { live } from "lit/directives/live.js";
 import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { icon } from "./icons";
@@ -225,7 +226,7 @@ export class DunkMusicCard extends LitElement {
     try {
       await fn();
     } catch (e) {
-      this.error = e instanceof Error ? e.message : String(e);
+      this.error = errorMessage(e);
     } finally {
       this.busy = false;
     }
@@ -273,8 +274,7 @@ export class DunkMusicCard extends LitElement {
       };
       this.cursor = p.next ?? Number(this.cursor) + p.items.length;
     } catch (e) {
-      if (id === this.requestId)
-        this.error = e instanceof Error ? e.message : String(e);
+      if (id === this.requestId) this.error = errorMessage(e);
     } finally {
       if (id === this.requestId) this.loading = false;
     }
@@ -723,7 +723,7 @@ export class DunkMusicCard extends LitElement {
   private settings() {
     return html`<div class="settings">
       <h1>Instellingen</h1>
-      <p>Dunk Music 0.1.2</p>
+      <p>Dunk Music 0.1.3</p>
       <p>Configuratie via kaart-YAML. Geen tokens of wachtwoorden nodig.</p>
       <p>
         Spotify: <code>${this.config.spotify_entity}</code> —
@@ -901,7 +901,7 @@ export class DunkMusicCard extends LitElement {
       style=${`--accent:${accent};--height:${height}`}
     >
       <header ?inert=${!!this.sheet}>
-        <strong>Dunk Music<small class="version"> v0.1.2</small></strong
+        <strong>Dunk Music<small class="version"> v0.1.3</small></strong
         ><select
           aria-label="Muziekbron"
           .value=${this.source}
