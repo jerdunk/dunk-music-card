@@ -22,7 +22,7 @@ let yt = class {
     return this.cssText;
   }
 };
-const wt = (n) => new yt(typeof n == "string" ? n : n + "", void 0, tt), At = (n, ...t) => {
+const xt = (n) => new yt(typeof n == "string" ? n : n + "", void 0, tt), At = (n, ...t) => {
   const e = n.length === 1 ? n[0] : t.reduce((i, s, r) => i + ((a) => {
     if (a._$cssResult$ === !0) return a.cssText;
     if (typeof a == "number") return a;
@@ -38,7 +38,7 @@ const wt = (n) => new yt(typeof n == "string" ? n : n + "", void 0, tt), At = (n
 }, rt = X ? (n) => n : (n) => n instanceof CSSStyleSheet ? ((t) => {
   let e = "";
   for (const i of t.cssRules) e += i.cssText;
-  return wt(e);
+  return xt(e);
 })(n) : n;
 /**
  * @license
@@ -75,7 +75,7 @@ const { is: Et, defineProperty: Mt, getOwnPropertyDescriptor: Ct, getOwnProperty
   return e;
 } }, gt = (n, t) => !Et(n, t), ot = { attribute: !0, type: String, converter: Q, reflect: !1, useDefault: !1, hasChanged: gt };
 Symbol.metadata ?? (Symbol.metadata = Symbol("metadata")), g.litPropertyMetadata ?? (g.litPropertyMetadata = /* @__PURE__ */ new WeakMap());
-let w = class extends HTMLElement {
+let x = class extends HTMLElement {
   static addInitializer(t) {
     this._$Ei(), (this.l ?? (this.l = [])).push(t);
   }
@@ -278,7 +278,7 @@ let w = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-w.elementStyles = [], w.shadowRootOptions = { mode: "open" }, w[C("elementProperties")] = /* @__PURE__ */ new Map(), w[C("finalized")] = /* @__PURE__ */ new Map(), B == null || B({ ReactiveElement: w }), (g.reactiveElementVersions ?? (g.reactiveElementVersions = [])).push("2.1.2");
+x.elementStyles = [], x.shadowRootOptions = { mode: "open" }, x[C("elementProperties")] = /* @__PURE__ */ new Map(), x[C("finalized")] = /* @__PURE__ */ new Map(), B == null || B({ ReactiveElement: x }), (g.reactiveElementVersions ?? (g.reactiveElementVersions = [])).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -521,7 +521,7 @@ const Wt = (n, t, e) => {
  * SPDX-License-Identifier: BSD-3-Clause
  */
 const v = globalThis;
-class P extends w {
+class P extends x {
   constructor() {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
@@ -560,7 +560,7 @@ const Vt = {
   devices: "M3 4H17V14H3ZM8 14V18M5 18H11M16 10H22V21H16Z",
   queue: "M3 6H21M3 12H15M3 18H11M18 15L22 18L18 21Z"
 };
-function x(n) {
+function w(n) {
   return jt`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d=${Vt[n]} /></svg>`;
 }
 const K = [
@@ -586,27 +586,27 @@ function z(n, t, e = []) {
     (i) => i.trim() && `${n} ${t}`.toLocaleLowerCase().includes(i.toLocaleLowerCase().trim())
   );
 }
-function xt(n) {
+function wt(n) {
   return typeof n == "string" && (/^https?:\/\//i.test(n) || /^\/(?!\/)/.test(n)) ? n : "";
 }
 function T(n, t = 0) {
-  var i, s, r, a, l, o;
-  const e = n.track ?? n.media_item ?? (!n.uri && !n.media_content_id && n.album ? n.album : n);
+  var s, r, a, l, o, h;
+  const e = n ?? {}, i = e.track ?? e.show ?? e.episode ?? e.media_item ?? (!e.uri && !e.media_content_id && e.album ? e.album : e);
   return {
-    id: e.id ?? e.item_id ?? e.uri ?? e.media_content_id ?? "",
-    uri: e.uri ?? e.media_content_id ?? "",
-    title: e.name ?? e.title ?? "Onbekend",
-    artist: Array.isArray(e.artists) ? e.artists.map((h) => typeof h == "string" ? h : h.name).join(", ") : e.artist ?? "",
-    album: typeof e.album == "string" ? e.album : ((i = e.album) == null ? void 0 : i.name) ?? "",
-    image: xt(
-      e.image ?? e.image_url ?? e.thumbnail ?? ((r = (s = e.images) == null ? void 0 : s[0]) == null ? void 0 : r.url) ?? ((o = (l = (a = e.album) == null ? void 0 : a.images) == null ? void 0 : l[0]) == null ? void 0 : o.url)
+    id: i.id ?? i.item_id ?? i.uri ?? i.media_content_id ?? "",
+    uri: i.uri ?? i.media_content_id ?? "",
+    title: i.name ?? i.title ?? "Onbekend",
+    artist: Array.isArray(i.artists) ? i.artists.map((u) => typeof u == "string" ? u : u.name).join(", ") : i.artist ?? "",
+    album: typeof i.album == "string" ? i.album : ((s = i.album) == null ? void 0 : s.name) ?? "",
+    image: wt(
+      i.image ?? i.image_url ?? i.thumbnail ?? ((a = (r = i.images) == null ? void 0 : r[0]) == null ? void 0 : a.url) ?? ((h = (o = (l = i.album) == null ? void 0 : l.images) == null ? void 0 : o[0]) == null ? void 0 : h.url)
     ),
-    duration: e.duration_ms ? e.duration_ms / 1e3 : e.duration ?? 0,
-    kind: e.type ?? e.media_type ?? e.media_content_type ?? "track",
+    duration: i.duration_ms ? i.duration_ms / 1e3 : i.duration ?? 0,
+    kind: i.type ?? i.media_type ?? i.media_content_type ?? "track",
     position: t,
-    playable: !!(e.uri ?? e.media_content_id) && e.available !== !1 && e.is_playable !== !1 && !e.is_local && e.can_play !== !1,
-    browsable: e.can_expand ?? ["playlist", "album", "artist", "show", "podcast"].includes(
-      e.type ?? e.media_type
+    playable: !!(i.uri ?? i.media_content_id) && i.available !== !1 && i.is_playable !== !1 && !i.is_local && i.can_play !== !1,
+    browsable: i.can_expand ?? ["playlist", "album", "artist", "show", "podcast"].includes(
+      i.type ?? i.media_type
     )
   };
 }
@@ -1531,7 +1531,7 @@ const Ft = At`
   art(t, e = "", i = "") {
     return t ? c`<img
           class=${i}
-          src=${xt(t)}
+          src=${wt(t)}
           alt=${e}
           loading="lazy"
           @error=${(s) => {
@@ -1551,19 +1551,19 @@ const Ft = At`
         ?disabled=${!this.supports(32768) || this.busy}
         @click=${() => this.control("shuffle_set", { shuffle: !e.shuffle })}
       >
-        ${x("shuffle")}</button
+        ${w("shuffle")}</button
       ><button
         aria-label="Vorig nummer"
         ?disabled=${!this.supports(16) || this.busy}
         @click=${() => this.control("media_previous_track")}
       >
-        ${x("previous")}</button
+        ${w("previous")}</button
       >${this.toggle()}<button
         aria-label="Volgend nummer"
         ?disabled=${!this.supports(32) || this.busy}
         @click=${() => this.control("media_next_track")}
       >
-        ${x("next")}</button
+        ${w("next")}</button
       ><button
         aria-label=${`Herhalen: ${e.repeat ?? "off"}`}
         class=${e.repeat && e.repeat !== "off" ? "active" : ""}
@@ -1578,7 +1578,7 @@ const Ft = At`
       this.source = this.session, this.navigate("Wachtrij");
     }}
             >
-              ${x("queue")}
+              ${w("queue")}
             </button>` : p}
       ${t && this.session === "spotify" && ((s = e.media_content_id) != null && s.startsWith("spotify:track:")) ? c`<button
               aria-label="Favorieten huidig nummer"
@@ -1607,7 +1607,7 @@ const Ft = At`
       return this.control(((s = this.state) == null ? void 0 : s.state) === "playing" ? "media_pause" : "media_play");
     }}
     >
-      ${x(((i = this.state) == null ? void 0 : i.state) === "playing" ? "pause" : "play")}
+      ${w(((i = this.state) == null ? void 0 : i.state) === "playing" ? "pause" : "play")}
     </button>`;
   }
   seek() {
@@ -1991,7 +1991,7 @@ const Ft = At`
         <div class="desktop-controls">${this.controls(!0)}${this.seek()}</div>
         <span class="mobile-toggle">${this.toggle()}</span
         ><button aria-label="Apparaten" @click=${() => this.showDevices()}>
-          ${x("devices")}
+          ${w("devices")}
         </button>
         <div class="volume">${this.volume()}</div>
         <div class="progress" aria-hidden="true">

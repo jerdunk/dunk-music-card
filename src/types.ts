@@ -96,9 +96,12 @@ export function safeImage(value: unknown): string {
     ? value
     : "";
 }
-export function normalize(raw: Data, position = 0): Item {
+export function normalize(input: Data | null, position = 0): Item {
+  const raw = input ?? {};
   const r =
     raw.track ??
+    raw.show ??
+    raw.episode ??
     raw.media_item ??
     (!raw.uri && !raw.media_content_id && raw.album ? raw.album : raw);
   return {

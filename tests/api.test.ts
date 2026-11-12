@@ -288,3 +288,21 @@ describe("MA Python registration schemas (UI field groups must be flattened)", (
     expect(hass.callService).not.toHaveBeenCalled();
   });
 });
+describe("Spotify saved podcast and removed-item contracts", () => {
+  it("unwraps saved shows without confusing a containing album with a track", () => {
+    expect(
+      normalize({
+        added_at: "2026-01-01",
+        show: {
+          id: "show1",
+          uri: "spotify:show:show1",
+          name: "Podcast",
+          type: "show",
+        },
+      }),
+    ).toMatchObject({ id: "show1", title: "Podcast", browsable: true });
+  });
+  it("keeps null playlist entries non-playable while preserving their position", () => {
+    expect(normalize(null, 7)).toMatchObject({ position: 7, playable: false });
+  });
+});

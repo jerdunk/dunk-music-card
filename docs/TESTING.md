@@ -7,7 +7,7 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Controle | Resultaat |
 | --- | --- |
 | TypeScript strict + productiebuild | Geslaagd |
-| Vitest API-/datatests | 18 geslaagd |
+| Vitest API-/datatests | 20 geslaagd |
 | Chromium mobiel 390 × 844 | 10 geslaagd |
 | Chromium tablet 820 × 1180 | 10 geslaagd |
 | Chromium desktop 1440 × 1000 | 10 geslaagd |
