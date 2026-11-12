@@ -12,7 +12,7 @@ Vereist: Home Assistant met service responses via WebSocket, recente SpotifyPlus
 
 1. Pak het meegeleverde installatiearchief uit. Kopieer `dist/dunk-music.js` naar `/config/www/dunk-music/dunk-music.js`. Maak de map indien nodig.
 2. Activeer geavanceerde modus in je profiel. Open Instellingen → Dashboards → Resources (soms onder het menu rechtsboven).
-3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.1` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
+3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.2` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
 4. Registreer niet tegelijk de handmatige en HACS-resource.
 
 ### HACS
@@ -64,9 +64,9 @@ Bronselectie bepaalt alleen de bibliotheek. De minispeler blijft de actieve sess
 
 Klik een collectie om deze te openen; klik een nummer om af te spelen. Bij Spotify blijft de oorspronkelijke positie in de afspeellijst behouden, ook na lokaal filteren of pagineren. Bij MA-playlists wordt `start_item` gebruikt. Alle afspeelacties zijn expliciet. Een geopende collectie of account-wissel start nooit automatisch muziek.
 
-Op Radio kies je eerst de doelkamer. De zes standaardzenders zijn zoekknoppen, geen verzonnen streams. Zoeken geeft de beschikbare providers/stations terug. Klik daarna het juiste station. Voeg desgewenst een geverifieerde MA-URI en afbeelding toe in `radio_stations` voor directe snelkoppelingen.
+Op Radio kies je eerst de doelkamer. De zes standaardzenders hebben gecontroleerde directe stream-URL’s en meegeleverde logo’s. Een klik speelt het station op de gekozen Music Assistant-kamer. Favorieten vooraf opslaan is niet nodig. Een gelijknamig station uit de MA-bibliotheek krijgt voorrang op de standaardstream. Zoeken gebruikt MA en vindt ook de meegeleverde stations. Bestaande radio_stations-configuratie met alleen de standaardnamen krijgt automatisch streams en logo’s. Eigen URI’s/afbeeldingen blijven geldig.
 
-Apparaten: **Alle apparaten** combineert Spotify Connect en Music Assistant-kamers in één lijst, met een label per koppeling. Gelijke namen worden niet samengevoegd omdat het verschillende afspeelroutes kunnen zijn. Een storing in één koppeling verbergt de andere lijst niet. Spotify Connect toont de apparaten die SpotifyPlus op dat moment teruggeeft. Telefoon/laptop/auto verschijnt alleen wanneer Spotify ze beschikbaar maakt. MA toont de geconfigureerde kamers inclusief onbeschikbare status. Een kamer selecteren start geen muziek. **Overzetten** draagt expliciet de wachtrij over. **Groeperen** gebruikt HA `media_player.join` alleen bij geadverteerde groepsondersteuning; daadwerkelijke protocolcompatibiliteit wordt door MA gecontroleerd en fouten worden getoond. Gebruik Instellingen voor volume per kamer.
+Apparaten: **Alle apparaten** combineert Spotify Connect en Music Assistant-kamers in één lijst, met een label per koppeling. Gelijke namen worden niet samengevoegd omdat het verschillende afspeelroutes kunnen zijn. Een storing in één koppeling verbergt de andere lijst niet. Spotify Connect combineert de online Spotify-lijst met get_spotify_connect_devices van SpotifyPlus. Daardoor kunnen lokaal ontdekte Google Cast/Nest- en Zeroconf-apparaten verschijnen voordat ze in Spotify’s online lijst staan. De kaart spreekt lokale apparaten niet rechtstreeks aan; SpotifyPlus verzorgt de activering en overdracht. Voor lokale detectie moet SpotifyPlus de apparaten op het netwerk kunnen ontdekken (mDNS/multicast). Telefoon/laptop/auto verschijnt alleen wanneer Spotify ze beschikbaar maakt. MA toont de geconfigureerde kamers inclusief onbeschikbare status. Een kamer selecteren start geen muziek. **Overzetten** draagt expliciet de wachtrij over. **Groeperen** gebruikt HA `media_player.join` alleen bij geadverteerde groepsondersteuning; daadwerkelijke protocolcompatibiliteit wordt door MA gecontroleerd en fouten worden getoond. Gebruik Instellingen voor volume per kamer.
 
 ## Bijwerken en herstellen
 
@@ -75,3 +75,9 @@ Vervang bij handmatige updates alleen het kaartbestand. Verhoog de resourcequery
 `Custom element doesn't exist`: controleer resourcepad, module-type, HTTP 200 en browserconsole. `Actie ... ontbreekt`: controleer de integratieversie en beschikbare acties in Ontwikkelaarstools; de kaart verzint geen alternatieve service. Onvoldoende Spotify-rechten/Premium/beperkte apparaten worden door SpotifyPlus afgewezen en als fout getoond. Bij rate limiting wacht de kaart minimaal een minuut na herkenbare 429-fouten; er is geen automatisch herhaald afspeelcommando.
 
 Rollback: open het oorspronkelijke muziekdashboard. Verwijder eventueel alleen de nieuwe Dunk Music-resource en het nieuwe testdashboard. Verwijder geen SpotifyPlus-/MA-integratie of Liquid Glass-bestand.
+
+## Controle na update vanuit HACS
+
+Als in de kaart nog v0.1.0 staat, is de nieuwe module niet geladen. Download de nieuwste versie via HACS (zo nodig via het kaartmenu opnieuw downloaden). In Instellingen → Dashboards → Resources mag slechts één Dunk Music-resource staan: `/hacsfiles/dunk-music-card/dunk-music.js?v=0.1.2`, type JavaScript-module. Verwijder de oude `/local/dunk-music/dunk-music.js...`-vermelding. Laat het bestaande dashboard en de thema’s staan. Herlaad de browser volledig of de frontendcache van de Companion App. Controleer de zichtbare versietekst bovenaan de kaart.
+
+Ontbreken lokale apparaten daarna nog? Controleer in Ontwikkelaarstools of `spotifyplus.get_spotify_connect_devices` beschikbaar is en apparaten retourneert; dit is een leesactie. Controleer de SpotifyPlus-instellingen voor lokale apparaatdetectie en netwerkbereikbaarheid. Apparaten die de backend niet ontdekt, kan de kaart niet verzinnen. Radio vereist een beschikbare Music Assistant-doelspeler en `music_assistant.play_media`; een ontbrekende zoek-/bibliotheekactie blokkeert de standaardzenders niet meer.

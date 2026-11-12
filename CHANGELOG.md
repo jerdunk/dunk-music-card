@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2
+
+- Combineert online Spotify-apparaten met de lokale SpotifyPlus-directory, inclusief slapende Google Cast-apparaten.
+- Houdt apparaten beschikbaar als een van de detectiebronnen faalt en toont de fout.
+- Zes radiozenders met gecontroleerde directe streams en meegeleverde omroeplogo’s; bestaande naamconfiguratie blijft werken.
+- Radio werkt ook bij lege of ontbrekende MA-radiozoekfunctie; afspelen blijft via MA.
+- Bepaalt de MA-configuratie vanuit de geselecteerde geldige speler.
+- Zichtbare versietekst en instructies om een oude handmatige resource na HACS-installatie te verwijderen.
+
 ## 0.1.1 — voorbereid
 
 - Eén apparaatlijst voor Spotify Connect en alle geconfigureerde Music Assistant-kamers, met aparte route- en statuslabels.

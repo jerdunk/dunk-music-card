@@ -350,3 +350,171 @@ describe("combined device list", () => {
     ).toEqual([]);
   });
 });
+describe("local SpotifyPlus directory", () => {
+  it("includes dormant Google Cast devices absent from the web API, merges activated aliases, and excludes Metz", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "get_player_devices");
+    hass.services.spotifyplus.get_spotify_connect_devices = {};
+    vi.mocked(hass.callWS).mockImplementation(
+      async (m: any) =>
+        ({
+          response: {
+            result:
+              m.service === "get_player_devices"
+                ? [
+                    { id: "cast-active-id", name: "Nest", is_active: true },
+                    { id: "phone", name: "iPhone" },
+                  ]
+                : {
+                    Items: [
+                      {
+                        Id: "cast-directory-id",
+                        DeviceIdActivated: "cast-active-id",
+                        Name: "Nest",
+                        IsChromeCast: true,
+                        IsInDeviceList: false,
+                        IsRestricted: true,
+                        DiscoveryResult: { IsDynamicDevice: false },
+                      },
+                      {
+                        Id: "local-2",
+                        Name: "Boven",
+                        IsChromeCast: true,
+                        IsInDeviceList: false,
+                      },
+                      {
+                        Id: "metz",
+                        Name: "Metz TV Slaapkamer",
+                        IsChromeCast: true,
+                      },
+                    ],
+                  },
+          },
+        }) as any,
+    );
+    const result = await api.allDevices("media_player.room", "spotify");
+    expect(result.devices.filter((d) => d.provider === "spotify")).toHaveLength(
+      3,
+    );
+    expect(result.devices.find((d) => d.name === "Nest")).toMatchObject({
+      id: "cast-directory-id",
+      transferId: "cast-directory-id",
+      active: true,
+      available: true,
+      local: true,
+      cast: true,
+    });
+    expect(result.devices.some((d) => d.id === "cast-active-id")).toBe(false);
+    expect(result.devices.find((d) => d.name === "Boven")).toMatchObject({
+      available: true,
+    });
+  });
+  it("preserves online and MA devices with a visible diagnostic when local discovery fails", async () => {
+    const { api, hass } = setup(
+      { result: [{ id: "phone", name: "iPhone" }] },
+      "spotifyplus",
+      "get_player_devices",
+    );
+    hass.services.spotifyplus.get_spotify_connect_devices = {};
+    vi.mocked(hass.callWS).mockImplementation(async (m: any) => {
+      if (m.service === "get_spotify_connect_devices")
+        throw new Error("mDNS unavailable");
+      return { response: { result: [{ id: "phone", name: "iPhone" }] } } as any;
+    });
+    const result = await api.allDevices("media_player.room", "spotify");
+    expect(result.devices).toHaveLength(2);
+    expect(result.warnings.join(" ")).toContain("mDNS unavailable");
+  });
+  it("does not disable a local device simply because it is not in the Spotify web list", async () => {
+    const { api, hass } = setup(
+      {
+        result: {
+          Items: [
+            {
+              Id: "sleeping-cast",
+              Name: "Nest Mini",
+              IsChromeCast: true,
+              IsInDeviceList: false,
+              IsActiveDevice: false,
+            },
+          ],
+        },
+      },
+      "spotifyplus",
+      "get_spotify_connect_devices",
+    );
+    const result = await api.devices(true, "");
+    expect(result[0]).toMatchObject({
+      id: "sleeping-cast",
+      available: true,
+      active: false,
+    });
+  });
+});
+describe("working radio presets", () => {
+  it("shows six playable stations with bundled logos even without MA search/library services", async () => {
+    const { api } = setup({});
+    const page = await api.radio("", 0, "media_player.room");
+    expect(page.items).toHaveLength(6);
+    expect(
+      page.items.every(
+        (i) =>
+          i.playable &&
+          i.uri.startsWith("https://") &&
+          i.image.startsWith("data:image/"),
+      ),
+    ).toBe(true);
+    expect(page.note).toBeTruthy();
+  });
+  it("fills stream and logo defaults for existing name-only radio YAML", async () => {
+    const { api } = setup({});
+    api.config = { ...config, radio_stations: [{ name: "Qmusic" }] };
+    const page = await api.radio("", 0, "media_player.room");
+    expect(page.items[0]).toMatchObject({
+      uri: "https://stream.qmusic.nl/qmusic/mp3",
+      playable: true,
+    });
+    expect(page.items[0].image).toContain("base64,");
+  });
+  it("uses matching MA station URI but preserves a logo if MA has none", async () => {
+    const { api } = setup(
+      {
+        items: [
+          {
+            name: "NPO Radio 2",
+            uri: "library://radio/42",
+            media_type: "radio",
+          },
+        ],
+      },
+      "music_assistant",
+      "get_library",
+    );
+    api.config = { ...config, ma_config_entry_id: "entry" };
+    const page = await api.radio("", 0, "media_player.room");
+    const npo = page.items.filter((i) => i.title === "NPO Radio 2");
+    expect(npo).toHaveLength(1);
+    expect(npo[0].uri).toBe("library://radio/42");
+    expect(npo[0].image).toContain("base64,");
+  });
+  it("resolves MA config entry using selected player instead of an invalid first configured entity", async () => {
+    const { api, hass } = setup({});
+    api.config = {
+      ...config,
+      ma_players: [{ entity: "media_player.wrong" }, ...config.ma_players],
+    };
+    vi.mocked(hass.callWS).mockResolvedValue([
+      {
+        entity_id: "media_player.room",
+        platform: "music_assistant",
+        config_entry_id: "entry",
+      },
+    ] as any);
+    expect(await api.maEntry("media_player.room")).toBe("entry");
+  });
+  it("never accepts arbitrary embedded SVG/HTML as metadata artwork", () => {
+    expect(safeImage('data:image/svg+xml,<svg onload="alert(1)"></svg>')).toBe(
+      "",
+    );
+    expect(safeImage("data:text/html,hello")).toBe("");
+  });
+});

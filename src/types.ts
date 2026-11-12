@@ -1,3 +1,4 @@
+import { isBundledRadioLogo } from "./radio-logos";
 export type Source = "spotify" | "music_assistant" | "radio";
 export type Data = Record<string, any>;
 export interface Entity {
@@ -57,6 +58,9 @@ export interface Device {
   active: boolean;
   available: boolean;
   entity?: string;
+  local?: boolean;
+  cast?: boolean;
+  transferId?: string;
 }
 export interface ListedDevice extends Device {
   provider: "spotify" | "music_assistant";
@@ -95,6 +99,12 @@ export function excluded(
   );
 }
 export function safeImage(value: unknown): string {
+  if (
+    typeof value === "string" &&
+    value.startsWith("data:") &&
+    isBundledRadioLogo(value)
+  )
+    return value;
   return typeof value === "string" &&
     (/^https?:\/\//i.test(value) || /^\/(?!\/)/.test(value))
     ? value

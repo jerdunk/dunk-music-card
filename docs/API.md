@@ -33,7 +33,7 @@ Bronnen:
 | Recent | `get_player_recent_tracks` met before-cursor |
 | Zoeken | `search_all`, criteria, criteria_type, maximaal 50 per type |
 | Afspelen | `player_media_play_context`, context_uri, offset_position; losse tracks via `player_media_play_tracks`, uris |
-| Apparaten | `get_player_devices`, refresh; `player_transfer_playback`, device_id, play |
+| Apparaten | `get_player_devices` plus `get_spotify_connect_devices`, refresh; `player_transfer_playback`, device_id, play |
 | Wachtrij | `get_player_queue_info`, `add_player_queue_items` |
 
 Een track zonder URI, lokaal item of expliciet onbeschikbaar item krijgt geen werkende afspeelknop. Lege/afgeschermde playlists kunnen door Spotify beperkt worden. Spotify bepaalt welke inactieve Connect-apparaten zichtbaar zijn; de kaart verzint geen offline telefoons/auto's. De oude SpotifyPlus Card blijft de fallback voor niet aangeboden specialistische functies.
@@ -57,4 +57,12 @@ Let op: `pagination` en `search_options` zijn UI-secties in services.yaml, geen 
 
 ## Performance en veiligheid
 
-30 seconden lees-cache, deduplicatie van parallelle identieke aanvragen, maximaal 100 cachesleutels, 400 ms zoek-debounce, stale-response bescherming, geen automatische playback-retries. Een herkenbare 429 zet een backoff van 60 seconden. Minispelerpositie wordt lokaal per seconde bijgewerkt, zonder API-polling. Lit werkt bestaande DOM bij; Shadow DOM en expliciete basiskleuren blokkeren globale glaseffecten in de kaart. Afbeeldingen accepteren alleen HTTP(S) of same-origin paden; metadata wordt als tekst gerenderd.
+30 seconden lees-cache, deduplicatie van parallelle identieke aanvragen, maximaal 100 cachesleutels, 400 ms zoek-debounce, stale-response bescherming, geen automatische playback-retries. Een herkenbare 429 zet een backoff van 60 seconden. Minispelerpositie wordt lokaal per seconde bijgewerkt, zonder API-polling. Lit werkt bestaande DOM bij; Shadow DOM en expliciete basiskleuren blokkeren globale glaseffecten in de kaart. Afbeeldingen accepteren HTTP(S), same-origin paden en de exact meegeleverde radiologo’s; metadata wordt als tekst gerenderd.
+
+## v0.1.2: lokale detectie en radio
+
+SpotifyPlus’ lokale directory retourneert `result.Items` met hoofdlettergevoelige velden `Id`, `Name`, `IsActiveDevice`, `IsChromeCast`, `IsInDeviceList`, `IsRestricted`, `DeviceIdActivated` en `DiscoveryResult.IsDynamicDevice`. Dit is een ander contract dan de kleine letters in de online device-array. Beide bronnen worden onafhankelijk gelezen. Bekende ID/activated-ID-overlap wordt samengevoegd; namen alleen zijn geen identiteit. Niet-online lokale Cast-apparaten worden niet onterecht uitgefilterd. Overdracht gebruikt `player_transfer_playback` met de directory-ID of, bij een unieke naam zonder ID, de ondersteunde naam.
+
+Bronnen: [SpotifyConnectDevices](https://github.com/thlucas1/SpotifyWebApiPython/blob/master/spotifywebapipython/models/spotifyconnectdevices.py), [SpotifyConnectDevice](https://github.com/thlucas1/SpotifyWebApiPython/blob/master/spotifywebapipython/models/spotifyconnectdevice.py).
+
+Radio: presets met gecontroleerde HTTP-audiostreams en gebundelde omroeplogo’s. MA-bibliotheekresultaten krijgen waar mogelijk voorrang; ontbrekende/lege radiozoekfunctie blokkeert presets niet. `music_assistant.play_media` accepteert URL’s als media_id; radio speelt op een expliciete MA-doelkamer. Het config_entry_id wordt eerst aan de geselecteerde, daarna andere geconfigureerde MA-spelers ontleend. Logoherkomst: docs/RADIO-SOURCES.md. Alleen de exacte gebundelde data-URL’s zijn toegestaan; willekeurige data/SVG/HTML blijft geblokkeerd.

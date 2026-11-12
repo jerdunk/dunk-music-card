@@ -1,3 +1,4 @@
+import { configuredRadios, radioKey } from "./radios";
 import {
   type Hass,
   type Config,
@@ -12,6 +13,7 @@ import {
 /** Uses only the authenticated HA connection; never calls Spotify or MA directly. */
 export class API {
   private cooldown = 0;
+  private deviceWarnings: string[] = [];
   cache = new Map<string, { until: number; value: Promise<Data> }>();
   constructor(
     public hass: Hass,
@@ -164,16 +166,19 @@ export class API {
       next,
     };
   }
-  async maEntry(): Promise<string> {
+  async maEntry(entity?: string): Promise<string> {
     if (this.config.ma_config_entry_id) return this.config.ma_config_entry_id;
     const rows = await this.hass.callWS<Data[]>({
       type: "config/entity_registry/list",
     });
-    const row = rows.find(
-      (x) =>
-        x.entity_id === this.config.ma_players[0]?.entity &&
-        x.platform === "music_assistant",
-    );
+    const configured = new Set(this.config.ma_players.map((p) => p.entity));
+    const row =
+      rows.find(
+        (x) => x.entity_id === entity && x.platform === "music_assistant",
+      ) ??
+      rows.find(
+        (x) => configured.has(x.entity_id) && x.platform === "music_assistant",
+      );
     if (!row?.config_entry_id)
       throw new Error(
         "Stel ma_config_entry_id in voor Music Assistant zoeken en bibliotheek.",
@@ -214,7 +219,7 @@ export class API {
         note: `${r.items ?? 0} items. De HA-API geeft alleen het huidige en volgende item terug; de volledige wachtrij staat in Music Assistant.`,
       };
     }
-    const config_entry_id = await this.maEntry();
+    const config_entry_id = await this.maEntry(entity);
     let r: Data;
     if (query)
       r = await this.read("music_assistant", "search", {
@@ -245,21 +250,110 @@ export class API {
       more: !query && rows.length === 50,
     };
   }
+  async radio(query: string, offset: number, entity: string): Promise<Page> {
+    const presets = offset
+      ? []
+      : configuredRadios(this.config).filter((i) =>
+          radioKey(i.title).includes(radioKey(query)),
+        );
+    let remote: Page = { items: [], more: false };
+    let note = "";
+    try {
+      remote = await this.ma("Radio", "radio", query, offset, entity);
+    } catch (e) {
+      note = `Music Assistant-radiozoekfunctie/bibliotheek niet geladen: ${e instanceof Error ? e.message : String(e)} De meegeleverde zenders blijven beschikbaar via Music Assistant-afspelen.`;
+    }
+    const items = presets.map((p) => {
+      const match = remote.items.find(
+        (i) =>
+          i.uri &&
+          i.kind === "radio" &&
+          radioKey(i.title) === radioKey(p.title),
+      );
+      return match ? { ...match, image: match.image || p.image } : p;
+    });
+    for (const item of remote.items) {
+      if (
+        !items.some(
+          (i) =>
+            i.uri === item.uri || radioKey(i.title) === radioKey(item.title),
+        )
+      )
+        items.push(item);
+    }
+    return { items, more: remote.more, note: note || undefined };
+  }
   async devices(spotify: boolean, entity: string): Promise<Device[]> {
     if (spotify) {
-      const r = (await this.sp("get_player_devices", { refresh: true }, true))
-        .result;
-      const rows = Array.isArray(r) ? r : (r?.devices ?? []);
-      return rows
-        .map((d: Data) => ({
-          id: d.id,
-          name: d.name,
-          active: !!d.is_active,
-          available: !!d.id && !d.is_restricted,
-        }))
-        .filter(
-          (d: Device) => !excluded(d.id, d.name, this.config.excluded_devices),
+      this.deviceWarnings = [];
+      const services = ["get_player_devices"];
+      if (this.has("spotifyplus", "get_spotify_connect_devices"))
+        services.push("get_spotify_connect_devices");
+      else
+        this.deviceWarnings.push(
+          "Lokale SpotifyPlus-detectie ontbreekt: get_spotify_connect_devices is niet beschikbaar.",
         );
+      const results = await Promise.allSettled(
+        services.map((service) => this.sp(service, { refresh: true }, true)),
+      );
+      const devices = new Map<string, Device>();
+      let succeeded = false;
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          this.deviceWarnings.push(
+            `${services[index]}: ${result.reason?.message ?? result.reason}`,
+          );
+          return;
+        }
+        const r = result.value.result;
+        const rows =
+          index === 0 ? (Array.isArray(r) ? r : r?.devices) : r?.Items;
+        if (!Array.isArray(rows)) {
+          this.deviceWarnings.push(
+            `${services[index]}: onbekend responseformaat.`,
+          );
+          return;
+        }
+        succeeded = true;
+        for (const d of rows) {
+          if (index === 0) {
+            if (!d.id) continue;
+            devices.set(d.id, {
+              id: d.id,
+              name: d.name,
+              active: !!d.is_active,
+              available: !d.is_restricted,
+            });
+          } else {
+            const local =
+              d.DiscoveryResult?.IsDynamicDevice === false ||
+              d.IsChromeCast === true;
+            const id = d.Id || (d.Name ? `local:${d.Name}` : "");
+            if (!id) continue;
+            const alias = d.DeviceIdActivated;
+            const old =
+              devices.get(id) ?? (alias ? devices.get(alias) : undefined);
+            if (alias && alias !== id) devices.delete(alias);
+            const nameUnique =
+              rows.filter((x) => x.Name === d.Name).length === 1;
+            devices.set(id, {
+              id,
+              name: d.Name ?? old?.name ?? id,
+              active: !!d.IsActiveDevice || !!old?.active,
+              available:
+                !!(d.Id || (d.Name && nameUnique)) &&
+                (!d.IsRestricted || !!d.IsChromeCast || !!d.IsSonos),
+              local,
+              cast: !!d.IsChromeCast,
+              transferId: d.Id || d.Name,
+            });
+          }
+        }
+      });
+      if (!succeeded) throw new Error(this.deviceWarnings.join(" · "));
+      return [...devices.values()].filter(
+        (d) => !excluded(d.id, d.name, this.config.excluded_devices),
+      );
     }
     return this.config.ma_players
       .map((p) => {
@@ -317,7 +411,10 @@ export class API {
         });
       }
     });
-    return { devices, warnings };
+    return {
+      devices,
+      warnings: [...new Set([...warnings, ...this.deviceWarnings])],
+    };
   }
   async play(
     spotify: boolean,
