@@ -105,6 +105,18 @@ export const styles = css`
     font-size: 19px;
     letter-spacing: -0.7px;
   }
+  .device-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .device-picker span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .workspace {
     display: grid;
     min-height: 0;

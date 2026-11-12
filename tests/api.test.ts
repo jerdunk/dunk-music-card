@@ -135,6 +135,7 @@ describe("supported API contracts", () => {
         entity_id: config.spotify_entity,
         context_uri: "spotify:playlist:p",
         offset_position: 23,
+        offset_uri: track.uri,
       },
       undefined,
     );
@@ -651,5 +652,92 @@ describe("Spotify playback optional fields", () => {
     expect(vi.mocked(hass.callService).mock.calls[0][2]).toMatchObject({
       shuffle: true,
     });
+  });
+});
+
+describe("exact Spotify track selection", () => {
+  it.each([0, 23, 83])(
+    "sends URI and original position %s, including the first row",
+    async (position) => {
+      const { api, hass } = setup(
+        {},
+        "spotifyplus",
+        "player_media_play_context",
+      );
+      await api.play(
+        true,
+        "",
+        normalize(track, position),
+        normalize({ uri: "spotify:playlist:p", type: "playlist" }),
+      );
+      expect(vi.mocked(hass.callService).mock.calls[0][2]).toMatchObject({
+        offset_uri: track.uri,
+        offset_position: position,
+        context_uri: "spotify:playlist:p",
+      });
+    },
+  );
+  it("does not use the playlist itself as a track offset for play-all", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "player_media_play_context");
+    const playlist = normalize({ uri: "spotify:playlist:p", type: "playlist" });
+    await api.play(true, "", playlist, playlist);
+    expect(vi.mocked(hass.callService).mock.calls[0][2]).toEqual({
+      entity_id: config.spotify_entity,
+      context_uri: playlist.uri,
+    });
+  });
+  it.each([true, false])(
+    "disables existing shuffle BEFORE playback on legacy provider spotify=%s",
+    async (spotify) => {
+      const { api, hass } = setup(
+        {},
+        spotify ? "spotifyplus" : "music_assistant",
+        spotify ? "player_media_play_context" : "play_media",
+      );
+      const entity = spotify ? config.spotify_entity : "media_player.room";
+      hass.states[entity] = {
+        state: "playing",
+        attributes: { shuffle: true, supported_features: 32768 },
+      };
+      hass.services.media_player = { shuffle_set: {} };
+      await api.play(
+        spotify,
+        entity,
+        normalize(track),
+        normalize({ uri: "spotify:playlist:p", type: "playlist" }),
+      );
+      const calls = vi.mocked(hass.callService).mock.calls;
+      expect(calls[0]).toEqual([
+        "media_player",
+        "shuffle_set",
+        { entity_id: entity, shuffle: false },
+        undefined,
+      ]);
+      expect(calls[1][1]).toBe(
+        spotify ? "player_media_play_context" : "play_media",
+      );
+      expect(calls[1][2]).not.toHaveProperty("shuffle");
+    },
+  );
+  it("does not start a different song if disabling shuffle fails", async () => {
+    const { api, hass } = setup({}, "spotifyplus", "player_media_play_context");
+    hass.states[config.spotify_entity] = {
+      state: "playing",
+      attributes: { shuffle: true, supported_features: 32768 },
+    };
+    hass.services.media_player = { shuffle_set: {} };
+    vi.mocked(hass.callService).mockRejectedValue({
+      message: "Shuffle wijzigen mislukt",
+    });
+    await expect(
+      api.play(
+        true,
+        "",
+        normalize(track),
+        normalize({ uri: "spotify:playlist:p", type: "playlist" }),
+      ),
+    ).rejects.toMatchObject({ message: "Shuffle wijzigen mislukt" });
+    expect(hass.callService).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(hass.callService).mock.calls[0][1]).toBe("shuffle_set");
   });
 });

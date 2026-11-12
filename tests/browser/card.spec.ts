@@ -1,4 +1,24 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+async function navigate(page: Page, name: string) {
+  if (
+    await page.getByRole("button", { name: "Meer", exact: true }).isVisible()
+  ) {
+    await page.getByRole("button", { name: "Meer", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name, exact: true })
+      .click();
+  } else {
+    await page
+      .getByRole("button", { name, exact: true })
+      .filter({ visible: true })
+      .click();
+  }
+}
+async function source(page: Page, value: string) {
+  await navigate(page, "Instellingen");
+  await page.getByLabel("Bibliotheekbron", { exact: true }).selectOption(value);
+}
 test.beforeEach(async ({ page }) => {
   await page.goto("/tests/fixture.html");
   await expect(
@@ -48,6 +68,14 @@ test("opens a playlist without playing; keeps vertical rows and plays selected c
           .at(-1).data.offset_position,
     ),
   ).toBe(83);
+  expect(
+    await page.evaluate(
+      () =>
+        window["calls"]
+          .filter((c) => c.service === "player_media_play_context")
+          .at(-1).data.offset_uri,
+    ),
+  ).toBe("spotify:track:t83");
 });
 test("does not overflow and keeps mini player in view after scrolling", async ({
   page,
@@ -74,9 +102,7 @@ test("does not overflow and keeps mini player in view after scrolling", async ({
 test("source switching never sends playback commands and retains active Spotify session", async ({
   page,
 }) => {
-  await page
-    .getByLabel("Muziekbron", { exact: true })
-    .selectOption("music_assistant");
+  await source(page, "music_assistant");
   await expect(
     page.getByRole("button", { name: "MA collectie playlist" }),
   ).toBeVisible();
@@ -224,7 +250,7 @@ test("debounces search and ignores out-of-order responses", async ({
 test("radio shows built-in logos and plays verified stream on explicit station click", async ({
   page,
 }) => {
-  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await navigate(page, "Radio");
   const radio = page.getByRole("button", {
     name: "Speel NPO Radio 2",
     exact: true,
@@ -337,7 +363,13 @@ test("switching to MA finds a playing room beyond the idle default and follows m
     };
     window["card"].hass = { ...h };
   });
-  await page.getByLabel("Bedien afspeelsessie").selectOption("music_assistant");
+  await page
+    .getByRole("button", { name: "Actief apparaat kiezen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: /Boven · Music Assistant · Speelt/ })
+    .click();
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
   await expect(page.locator("footer")).toContainText("Muziek boven");
   await page.evaluate(() => {
     const h = window["hass"];
@@ -366,20 +398,28 @@ test("explicit idle room selection is not stolen by another active room", async 
     };
     window["card"].hass = { ...h };
   });
-  await expect(page.getByLabel("Doelkamer")).toHaveValue("media_player.room");
+  expect(await page.evaluate(() => window["card"].player)).toBe(
+    "media_player.room",
+  );
   await expect(page.locator("footer")).toContainText("Externe Spotify-sessie");
   await expect(page.locator("footer")).not.toContainText("Andere kamer");
 });
 test("choosing Music Assistant while only iPhone plays keeps iPhone now playing visible", async ({
   page,
 }) => {
-  await page.getByLabel("Bedien afspeelsessie").selectOption("music_assistant");
-  await expect(page.getByLabel("Bedien afspeelsessie")).toHaveValue("spotify");
+  await page
+    .getByRole("button", { name: "Actief apparaat kiezen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Beneden · Music Assistant · Geselecteerd" })
+    .click();
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Actief apparaat kiezen", exact: true }),
+  ).toContainText("iPhone");
   await expect(page.locator("footer")).toContainText("Externe Spotify-sessie");
   await expect(page.locator("footer")).toContainText("iPhone");
-  await page
-    .getByLabel("Muziekbron", { exact: true })
-    .selectOption("music_assistant");
+  await source(page, "music_assistant");
   await expect(page.locator("footer")).toContainText("iPhone");
   expect(
     await page.evaluate(() => window["calls"].filter((c) => !c.type)),
@@ -436,7 +476,7 @@ test("radio works without saved favorites or search services and logos need no e
     delete window["hass"].services.music_assistant.search;
   });
   await page.route("https://**/*", (route) => route.abort());
-  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await navigate(page, "Radio");
   await expect(
     page.getByRole("button", { name: "Speel Qmusic", exact: true }),
   ).toBeVisible();
@@ -460,7 +500,7 @@ test("radio works without saved favorites or search services and logos need no e
 test("radio sends no shuffle field to older MA and does not retry playback", async ({
   page,
 }) => {
-  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await navigate(page, "Radio");
   await page.getByRole("button", { name: "Speel Qmusic", exact: true }).click();
   const calls = await page.evaluate(() =>
     window["calls"].filter((c) => c.service === "play_media"),
@@ -480,7 +520,7 @@ test("plain HA websocket failure shows its message instead of object Object", as
       };
     };
   });
-  await page.getByLabel("Muziekbron", { exact: true }).selectOption("radio");
+  await navigate(page, "Radio");
   await page.getByRole("button", { name: "Speel Qmusic", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
     "De gekozen luidspreker is onbereikbaar",
@@ -517,4 +557,87 @@ test("Spotify playback is compatible with older schemas and shows structured err
     "Geen actief Spotify-apparaat",
   );
   await expect(page.getByRole("alert")).not.toContainText("[object Object]");
+});
+
+for (const shuffled of [false, true]) {
+  test(`first playlist row starts the chosen track with existing shuffle=${shuffled}`, async ({
+    page,
+  }) => {
+    await page.evaluate((shuffle) => {
+      const h = window["hass"];
+      h.states["media_player.spotify"].attributes.shuffle = shuffle;
+      const original = h.callService;
+      h.callService = async (d, s, data, target) => {
+        await original(d, s, data, target);
+        if (s === "shuffle_set")
+          h.states[data.entity_id].attributes.shuffle = data.shuffle;
+        if (s === "player_media_play_context") {
+          // SpotifyPlus gives URI priority; it drops position=0 and randomizes positions with shuffle.
+          const activeShuffle =
+            h.states["media_player.spotify"].attributes.shuffle;
+          const offset = activeShuffle ? 17 : data.offset_position;
+          const uri =
+            data.offset_uri ??
+            (offset > 0
+              ? `spotify:track:t${offset}`
+              : "spotify:track:previous");
+          window["startedTrack"] = uri;
+          h.states["media_player.spotify"].attributes.media_title = uri;
+          window["card"].hass = { ...h };
+        }
+      };
+    }, shuffled);
+    await page
+      .getByRole("button", { name: "Afspeellijst 0 playlist", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Nummer 0 Artiest", exact: true })
+      .click();
+    await expect
+      .poll(() => page.evaluate(() => window["startedTrack"]))
+      .toBe("spotify:track:t0");
+    await expect(page.locator("footer")).toContainText("spotify:track:t0");
+    const calls = await page.evaluate(() =>
+      window["calls"].filter((c) => !c.type),
+    );
+    expect(
+      calls.filter((c) => c.service === "player_media_play_context"),
+    ).toHaveLength(1);
+    expect(calls.at(-1).data).toMatchObject({
+      context_uri: "spotify:playlist:p0",
+      offset_uri: "spotify:track:t0",
+      offset_position: 0,
+    });
+    if (shuffled)
+      expect(calls[0]).toMatchObject({
+        service: "shuffle_set",
+        data: { shuffle: false },
+      });
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+}
+test("header has one device button; library source persists across Radio and reload", async ({
+  page,
+}) => {
+  await expect(page.locator("header select")).toHaveCount(0);
+  await expect(page.locator("header button")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Actief apparaat kiezen" }),
+  ).toContainText("iPhone");
+  await source(page, "music_assistant");
+  await navigate(page, "Radio");
+  await expect(
+    page.getByRole("button", { name: "Speel Qmusic", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Speel Qmusic", exact: true }),
+  ).toBeVisible();
+  await navigate(page, "Home");
+  await expect(
+    page.getByRole("button", { name: "MA collectie playlist" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => window["calls"].filter((c) => !c.type)),
+  ).toHaveLength(0);
 });
