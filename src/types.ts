@@ -58,6 +58,10 @@ export interface Device {
   available: boolean;
   entity?: string;
 }
+export interface ListedDevice extends Device {
+  provider: "spotify" | "music_assistant";
+  selected: boolean;
+}
 export const NAV = [
   "Home",
   "Zoeken",

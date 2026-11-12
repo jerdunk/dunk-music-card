@@ -5,6 +5,7 @@ import {
   type Page,
   type Item,
   type Device,
+  type ListedDevice,
   normalize,
   excluded,
 } from "./types";
@@ -272,6 +273,51 @@ export class API {
         };
       })
       .filter((d) => !excluded(d.id, d.name, this.config.excluded_devices));
+  }
+  async allDevices(
+    entity: string,
+    session: string,
+  ): Promise<{ devices: ListedDevice[]; warnings: string[] }> {
+    const results = await Promise.allSettled([
+      this.devices(true, entity),
+      this.devices(false, entity),
+    ]);
+    const devices: ListedDevice[] = [];
+    const warnings: string[] = [];
+    results.forEach((result, index) => {
+      const provider = index === 0 ? "spotify" : "music_assistant";
+      if (result.status === "rejected") {
+        warnings.push(
+          `${index === 0 ? "Spotify Connect" : "Music Assistant"}: ${result.reason?.message ?? result.reason}`,
+        );
+        return;
+      }
+      for (const d of result.value) {
+        // Preserve separate routes: identical names do not imply identical device IDs.
+        if (
+          excluded(
+            d.id,
+            this.hass.states[d.entity ?? ""]?.attributes.friendly_name ??
+              d.name,
+            this.config.excluded_devices,
+          )
+        )
+          continue;
+        devices.push({
+          ...d,
+          provider,
+          active:
+            provider === "spotify"
+              ? d.active
+              : this.hass.states[d.id]?.state === "playing",
+          selected:
+            provider === "spotify"
+              ? session === "spotify" && d.active
+              : d.id === entity,
+        });
+      }
+    });
+    return { devices, warnings };
   }
   async play(
     spotify: boolean,

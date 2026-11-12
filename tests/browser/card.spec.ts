@@ -99,14 +99,18 @@ test("devices exclude Metz, show unavailable status, transfer only by explicit c
   await page.getByRole("button", { name: "Apparaten", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toContainText("Metz");
   await expect(
-    page.getByRole("button", { name: "Beperkt apparaat · Niet beschikbaar" }),
+    page.getByRole("button", {
+      name: "Beperkt apparaat · Spotify Connect · Niet beschikbaar",
+    }),
   ).toBeDisabled();
   expect(
     await page.evaluate(() =>
       window["calls"].filter((c) => c.service === "player_transfer_playback"),
     ),
   ).toHaveLength(0);
-  await page.getByRole("button", { name: "Laptop · Beschikbaar" }).click();
+  await page
+    .getByRole("button", { name: "Laptop · Spotify Connect · Beschikbaar" })
+    .click();
   expect(
     await page.evaluate(
       () =>
@@ -173,13 +177,11 @@ test("layout follows card width rather than browser viewport", async ({
   ).toBe(true);
 });
 test("isolates global Liquid Glass styles", async ({ page }) => {
-  const style = await page
-    .locator("dunk-music-card")
-    .evaluate((e) => ({
-      background: getComputedStyle(e.shadowRoot.querySelector(".app"))
-        .backgroundColor,
-      font: getComputedStyle(e).fontFamily,
-    }));
+  const style = await page.locator("dunk-music-card").evaluate((e) => ({
+    background: getComputedStyle(e.shadowRoot.querySelector(".app"))
+      .backgroundColor,
+    font: getComputedStyle(e).fontFamily,
+  }));
   expect(style.background).toBe("rgb(18, 18, 18)");
   expect(style.font).toContain("system-ui");
 });
@@ -238,6 +240,135 @@ test("radio chooses MA search and never starts playback from a search shortcut",
           .media_type,
     ),
   ).toEqual(["radio"]);
+  expect(
+    await page.evaluate(() => window["calls"].filter((c) => !c.type)),
+  ).toHaveLength(0);
+});
+test("one list shows both providers; selecting MA does not transfer or start Spotify", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Apparaten", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Alle apparaten" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /iPhone · Spotify Connect/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Boven · Music Assistant · Niet beschikbaar",
+    }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Beneden · Music Assistant · Geselecteerd" })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Beneden · Music Assistant · Geselecteerd",
+    }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => window["calls"].filter((c) => !c.type)),
+  ).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Laptop · Spotify Connect · Beschikbaar" })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        window["calls"].find((c) => c.service === "player_transfer_playback")
+          .data.device_id,
+    ),
+  ).toBe("laptop");
+  expect(
+    await page.evaluate(() =>
+      window["calls"].filter(
+        (c) => c.service === "transfer_queue" || c.service === "join",
+      ),
+    ),
+  ).toHaveLength(0);
+});
+test("device list remains usable when Spotify device discovery fails", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const original = window["hass"].callWS;
+    window["hass"].callWS = async (m) => {
+      if (m.service === "get_player_devices")
+        throw new Error("Spotify tijdelijk offline");
+      return original(m);
+    };
+  });
+  await page.getByRole("button", { name: "Apparaten", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Spotify tijdelijk offline",
+  );
+  await expect(
+    page.getByRole("button", {
+      name: "Beneden · Music Assistant · Geselecteerd",
+    }),
+  ).toBeEnabled();
+});
+test("switching to MA finds a playing room beyond the idle default and follows metadata", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const h = window["hass"];
+    h.states["media_player.offline"] = {
+      state: "playing",
+      attributes: {
+        ...h.states["media_player.room"].attributes,
+        friendly_name: "Boven",
+        media_title: "Muziek boven",
+        media_artist: "Artiest boven",
+      },
+    };
+    window["card"].hass = { ...h };
+  });
+  await page.getByLabel("Bedien afspeelsessie").selectOption("music_assistant");
+  await expect(page.locator("footer")).toContainText("Muziek boven");
+  await page.evaluate(() => {
+    const h = window["hass"];
+    h.states["media_player.offline"].attributes.media_title =
+      "Volgend nummer boven";
+    window["card"].hass = { ...h };
+  });
+  await expect(page.locator("footer")).toContainText("Volgend nummer boven");
+  expect(
+    await page.evaluate(() => window["calls"].filter((c) => !c.type)),
+  ).toHaveLength(0);
+});
+test("explicit idle room selection is not stolen by another active room", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Apparaten", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Beneden · Music Assistant · Geselecteerd" })
+    .click();
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await page.evaluate(() => {
+    const h = window["hass"];
+    h.states["media_player.offline"] = {
+      state: "playing",
+      attributes: { media_title: "Andere kamer", friendly_name: "Boven" },
+    };
+    window["card"].hass = { ...h };
+  });
+  await expect(page.getByLabel("Doelkamer")).toHaveValue("media_player.room");
+  await expect(page.locator("footer")).toContainText("Externe Spotify-sessie");
+  await expect(page.locator("footer")).not.toContainText("Andere kamer");
+});
+test("choosing Music Assistant while only iPhone plays keeps iPhone now playing visible", async ({
+  page,
+}) => {
+  await page.getByLabel("Bedien afspeelsessie").selectOption("music_assistant");
+  await expect(page.getByLabel("Bedien afspeelsessie")).toHaveValue("spotify");
+  await expect(page.locator("footer")).toContainText("Externe Spotify-sessie");
+  await expect(page.locator("footer")).toContainText("iPhone");
+  await page
+    .getByLabel("Muziekbron", { exact: true })
+    .selectOption("music_assistant");
+  await expect(page.locator("footer")).toContainText("iPhone");
   expect(
     await page.evaluate(() => window["calls"].filter((c) => !c.type)),
   ).toHaveLength(0);

@@ -1,3 +1,4 @@
+import { live } from "lit/directives/live.js";
 import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { icon } from "./icons";
 import { API } from "./api";
@@ -8,7 +9,7 @@ import {
   type Source,
   type Item,
   type Page,
-  type Device,
+  type ListedDevice,
   type Data,
   NAV,
   RADIOS,
@@ -53,7 +54,7 @@ export class DunkMusicCard extends LitElement {
   busy = false;
   error = "";
   sheet = "";
-  devices: Device[] = [];
+  devices: ListedDevice[] = [];
   player = "";
   tick = 0;
   menuItem?: Item;
@@ -64,6 +65,7 @@ export class DunkMusicCard extends LitElement {
   private searchTimer?: ReturnType<typeof setTimeout>;
   private initialized = false;
   private manualSession = false;
+  private manualPlayer = false;
   private opener?: HTMLElement;
   setConfig(config: Config) {
     if (!config.spotify_entity?.startsWith("media_player."))
@@ -104,6 +106,7 @@ export class DunkMusicCard extends LitElement {
       this.player = this.config.ma_players[0]?.entity ?? "";
     this.session = this.source;
     this.manualSession = false;
+    this.manualPlayer = false;
     this.initialized = false;
     this.api = undefined;
     this.requestId++;
@@ -160,9 +163,28 @@ export class DunkMusicCard extends LitElement {
     }
   }
   private detectSession() {
-    if (this.manualSession) return;
+    if (
+      !this.manualPlayer &&
+      this.hass.states[this.player]?.state !== "playing"
+    ) {
+      const playing = this.players.find(
+        (p) => this.hass.states[p.entity]?.state === "playing",
+      );
+      if (playing) {
+        this.player = playing.entity;
+        this.save();
+      }
+    }
     const sp = this.hass.states[this.config.spotify_entity];
     const ma = this.hass.states[this.player];
+    // A library/target choice must not hide music playing on another route.
+    // When both routes play, retain the explicitly chosen session.
+    if (
+      this.manualSession &&
+      sp?.state === "playing" &&
+      ma?.state === "playing"
+    )
+      return;
     if (sp?.state === "playing" && ma?.state !== "playing")
       this.session = "spotify";
     else if (ma?.state === "playing" && sp?.state !== "playing")
@@ -330,26 +352,36 @@ export class DunkMusicCard extends LitElement {
       }
     }
   }
+  private async refreshDevices() {
+    const result = await this.api!.allDevices(this.player, this.session);
+    this.devices = result.devices;
+    this.error = result.warnings.join(" · ");
+  }
   private showDevices() {
     this.devices = [];
     this.modal("devices");
-    void this.action(async () => {
-      this.devices = await this.api!.devices(
-        this.session === "spotify",
-        this.player,
-      );
-    });
+    void this.action(() => this.refreshDevices());
   }
-  private selectDevice(d: Device, transfer = false) {
+  private selectDevice(d: ListedDevice, transfer = false) {
     if (!d.available) return;
     void this.action(async () => {
-      if (this.session === "spotify")
+      if (d.provider === "spotify") {
         await this.api!.sp("player_transfer_playback", {
           device_id: d.id,
-          play: this.state?.state === "playing",
+          play:
+            this.hass.states[this.config.spotify_entity]?.state === "playing",
         });
-      else {
-        if (transfer)
+        this.session = "spotify";
+      } else {
+        if (transfer) {
+          if (
+            this.session === "spotify" ||
+            !this.player ||
+            d.id === this.player
+          )
+            throw new Error(
+              "Overzetten is alleen beschikbaar tussen Music Assistant-kamers.",
+            );
           await this.api!.call(
             "music_assistant",
             "transfer_queue",
@@ -360,14 +392,21 @@ export class DunkMusicCard extends LitElement {
             false,
             { entity_id: d.id },
           );
+        }
         this.player = d.id;
-        this.save();
+        this.manualPlayer = true;
+        this.session = "music_assistant";
       }
+      this.manualSession = true;
+      this.detectSession();
+      // Choosing a route also selects the matching library; never starts playback.
+      if (d.provider === "spotify" && this.source !== "spotify")
+        this.changeSource("spotify");
+      else if (d.provider === "music_assistant" && this.source === "spotify")
+        this.changeSource("music_assistant");
+      this.save();
       this.api!.cache.clear();
-      this.devices = await this.api!.devices(
-        this.session === "spotify",
-        this.player,
-      );
+      await this.refreshDevices();
     });
   }
   private art(image: string, title = "", cls = "") {
@@ -681,7 +720,7 @@ export class DunkMusicCard extends LitElement {
   private settings() {
     return html`<div class="settings">
       <h1>Instellingen</h1>
-      <p>Dunk Music 0.1.0</p>
+      <p>Dunk Music 0.1.1</p>
       <p>Configuratie via kaart-YAML. Geen tokens of wachtwoorden nodig.</p>
       <p>
         Spotify: <code>${this.config.spotify_entity}</code> —
@@ -735,13 +774,46 @@ export class DunkMusicCard extends LitElement {
   }
   private sheetContent() {
     if (this.sheet === "devices")
-      return html`<h2 id="dialog-title">
-          ${this.session === "spotify" ? "Spotify Connect" : "Music Assistant-kamers"}
-        </h2>
+      return html`<h2 id="dialog-title">Alle apparaten</h2>
         <p class="muted">
-          ${this.session === "spotify" ? "Overzetten gebeurt pas na je keuze. Status volgt de integratie." : "Selecteer een kamer zonder afspelen, of kies expliciet Overzetten / Groeperen."}
+          Spotify Connect en Music Assistant in één lijst. Een Music
+          Assistant-kamer kiezen start geen muziek. Spotify Connect verplaatst
+          alleen de Spotify-sessie.
         </p>
-        ${this.devices.map((d) => html`<div class=${`device ${d.active ? "active" : ""}`}><button ?disabled=${!d.available || this.busy} @click=${() => this.selectDevice(d)}>${d.name} · ${!d.available ? "Niet beschikbaar" : d.active ? "Actief" : "Beschikbaar"}</button>${this.session !== "spotify" && !d.active ? html`<button ?disabled=${!d.available || this.busy || !this.api?.has("music_assistant", "transfer_queue")} @click=${() => this.selectDevice(d, true)}>Overzetten</button>${this.supports(524288) ? html`<button ?disabled=${!d.available || this.busy || !((this.hass.states[d.id]?.attributes.supported_features ?? 0) & 524288)} @click=${() => void this.action(() => this.api!.call("media_player", "join", { entity_id: this.player, group_members: [d.id] }))}>Groeperen</button>` : nothing}` : nothing}</div>`)}${!this.devices.length ? html`<p>Geen apparaten geladen of beschikbaar.</p>` : nothing}${this.session !== "spotify" && this.supports(524288) ? html`<button ?disabled=${this.busy} @click=${() => this.control("unjoin")}>Groep verlaten</button>` : nothing}`;
+        ${this.busy && !this.devices.length ? html`<p role="status">Apparaten laden…</p>` : nothing}
+        ${this.devices.map(
+          (d) =>
+            html`<div
+              class=${`device ${d.active || d.selected ? "active" : ""}`}
+            >
+              <button
+                ?disabled=${!d.available || this.busy}
+                @click=${() => this.selectDevice(d)}
+              >
+                ${d.name} ·
+                ${d.provider === "spotify" ? "Spotify Connect" : "Music Assistant"}
+                ·
+                ${!d.available ? "Niet beschikbaar" : d.active ? (d.provider === "spotify" ? "Actief" : "Speelt") : d.selected ? "Geselecteerd" : "Beschikbaar"}
+              </button>
+              ${
+                d.provider === "music_assistant" &&
+                this.session !== "spotify" &&
+                d.id !== this.player
+                  ? html`
+                      <button
+                        ?disabled=${!d.available || this.busy || !this.api?.has("music_assistant", "transfer_queue")}
+                        @click=${() => this.selectDevice(d, true)}
+                      >
+                        Overzetten
+                      </button>
+                      ${this.supports(524288) ? html`<button ?disabled=${!d.available || this.busy || !((this.hass.states[d.id]?.attributes.supported_features ?? 0) & 524288)} @click=${() => void this.action(() => this.api!.call("media_player", "join", { entity_id: this.player, group_members: [d.id] }))}>Groeperen</button>` : nothing}
+                    `
+                  : nothing
+              }
+            </div>`,
+        )}
+        ${!this.busy && !this.devices.length ? html`<p>Geen apparaten beschikbaar.</p>` : nothing}
+        ${this.session !== "spotify" && this.supports(524288) ? html`<button ?disabled=${this.busy} @click=${() => this.control("unjoin")}>Groep verlaten</button>` : nothing}`;
     if (this.sheet === "options")
       return html`<h2 id="dialog-title">${this.menuItem?.title}</h2>
         <div class="controls">
@@ -826,7 +898,7 @@ export class DunkMusicCard extends LitElement {
       style=${`--accent:${accent};--height:${height}`}
     >
       <header ?inert=${!!this.sheet}>
-        <strong>Dunk Music<span class="sr"> 0.1.0</span></strong
+        <strong>Dunk Music<span class="sr"> 0.1.1</span></strong
         ><select
           aria-label="Muziekbron"
           .value=${this.source}
@@ -842,6 +914,7 @@ export class DunkMusicCard extends LitElement {
                 .value=${this.player}
                 @change=${(e: Event) => {
                   this.player = (e.target as HTMLSelectElement).value;
+                  this.manualPlayer = true;
                   this.save();
                   void this.load();
                 }}
@@ -851,10 +924,12 @@ export class DunkMusicCard extends LitElement {
             : nothing
         }<select
           aria-label="Bedien afspeelsessie"
-          .value=${this.session === "spotify" ? "spotify" : "music_assistant"}
+          .value=${live(this.session === "spotify" ? "spotify" : "music_assistant")}
           @change=${(e: Event) => {
             this.session = (e.target as HTMLSelectElement).value as Source;
             this.manualSession = true;
+            this.manualPlayer = false;
+            this.detectSession();
           }}
         >
           <option value="spotify">Speler: Spotify</option>

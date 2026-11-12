@@ -25,18 +25,18 @@ jobs:
       - run: npm run test:e2e
       - name: Build installation and source archives
         run: |
-          zip -r dunk-music-v0.1.0.zip dist themes examples docs README.md CHANGELOG.md LICENSE hacs.json
-          git archive --format=zip --prefix=dunk-music-card/ -o dunk-music-source-v0.1.0.zip HEAD
+          zip -r dunk-music-v0.1.1.zip dist themes examples docs README.md CHANGELOG.md LICENSE hacs.json
+          git archive --format=zip --prefix=dunk-music-card/ -o dunk-music-source-v0.1.1.zip HEAD
           cp dist/dunk-music.js dunk-music.js
-          sha256sum dunk-music.js dunk-music-v0.1.0.zip dunk-music-source-v0.1.0.zip > SHA256SUMS.txt
+          sha256sum dunk-music.js dunk-music-v0.1.1.zip dunk-music-source-v0.1.1.zip > SHA256SUMS.txt
       - name: Create or update draft only
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.1.0 --json isDraft > release-status.json 2>/dev/null; then
+          if gh release view v0.1.1 --json isDraft > release-status.json 2>/dev/null; then
             node -e 'if (!JSON.parse(require("fs").readFileSync("release-status.json", "utf8")).isDraft) { throw new Error("Refusing to replace a published release"); }'
-            gh release edit v0.1.0 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.0" --notes-file docs/RELEASE-v0.1.0.md
+            gh release edit v0.1.1 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.1" --notes-file docs/RELEASE-v0.1.1.md
           else
-            gh release create v0.1.0 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.0" --notes-file docs/RELEASE-v0.1.0.md
+            gh release create v0.1.1 --draft --target "$GITHUB_SHA" --title "Dunk Music v0.1.1" --notes-file docs/RELEASE-v0.1.1.md
           fi
-          gh release upload v0.1.0 dunk-music.js dunk-music-v0.1.0.zip dunk-music-source-v0.1.0.zip SHA256SUMS.txt --clobber
+          gh release upload v0.1.1 dunk-music.js dunk-music-v0.1.1.zip dunk-music-source-v0.1.1.zip SHA256SUMS.txt --clobber

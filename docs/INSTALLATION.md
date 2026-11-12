@@ -12,7 +12,7 @@ Vereist: Home Assistant met service responses via WebSocket, recente SpotifyPlus
 
 1. Pak het meegeleverde installatiearchief uit. Kopieer `dist/dunk-music.js` naar `/config/www/dunk-music/dunk-music.js`. Maak de map indien nodig.
 2. Activeer geavanceerde modus in je profiel. Open Instellingen → Dashboards → Resources (soms onder het menu rechtsboven).
-3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.0` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
+3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.1` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
 4. Registreer niet tegelijk de handmatige en HACS-resource.
 
 ### HACS
@@ -60,13 +60,13 @@ Bron, navigatie en geselecteerde MA-speler worden lokaal per browser opgeslagen 
 
 ## Gebruik
 
-Bronselectie bepaalt alleen de bibliotheek. De keuzelijst **Speler** bepaalt welke sessie de minispeler bedient; bij één actieve sessie volgt de kaart deze automatisch. Bij gelijktijdige Spotify- en MA-muziek kies je expliciet. Wisselen van bron start of stopt geen muziek.
+Bronselectie bepaalt alleen de bibliotheek. De minispeler blijft de actieve sessie tonen, ook als je een andere bibliotheek of een niet-spelende doelkamer kiest. Speelt alleen Spotify op je iPhone, dan blijven de iPhone en het nummer zichtbaar bij het kiezen van Music Assistant. De keuzelijst **Speler** kiest tussen sessies wanneer beide daadwerkelijk spelen. Bij gelijktijdige Spotify- en MA-muziek kies je expliciet. Wisselen van bron start of stopt geen muziek.
 
 Klik een collectie om deze te openen; klik een nummer om af te spelen. Bij Spotify blijft de oorspronkelijke positie in de afspeellijst behouden, ook na lokaal filteren of pagineren. Bij MA-playlists wordt `start_item` gebruikt. Alle afspeelacties zijn expliciet. Een geopende collectie of account-wissel start nooit automatisch muziek.
 
 Op Radio kies je eerst de doelkamer. De zes standaardzenders zijn zoekknoppen, geen verzonnen streams. Zoeken geeft de beschikbare providers/stations terug. Klik daarna het juiste station. Voeg desgewenst een geverifieerde MA-URI en afbeelding toe in `radio_stations` voor directe snelkoppelingen.
 
-Apparaten: Spotify Connect toont de apparaten die SpotifyPlus op dat moment teruggeeft. Telefoon/laptop/auto verschijnt alleen wanneer Spotify ze beschikbaar maakt. MA toont de geconfigureerde kamers inclusief onbeschikbare status. Een kamer selecteren start geen muziek. **Overzetten** draagt expliciet de wachtrij over. **Groeperen** gebruikt HA `media_player.join` alleen bij geadverteerde groepsondersteuning; daadwerkelijke protocolcompatibiliteit wordt door MA gecontroleerd en fouten worden getoond. Gebruik Instellingen voor volume per kamer.
+Apparaten: **Alle apparaten** combineert Spotify Connect en Music Assistant-kamers in één lijst, met een label per koppeling. Gelijke namen worden niet samengevoegd omdat het verschillende afspeelroutes kunnen zijn. Een storing in één koppeling verbergt de andere lijst niet. Spotify Connect toont de apparaten die SpotifyPlus op dat moment teruggeeft. Telefoon/laptop/auto verschijnt alleen wanneer Spotify ze beschikbaar maakt. MA toont de geconfigureerde kamers inclusief onbeschikbare status. Een kamer selecteren start geen muziek. **Overzetten** draagt expliciet de wachtrij over. **Groeperen** gebruikt HA `media_player.join` alleen bij geadverteerde groepsondersteuning; daadwerkelijke protocolcompatibiliteit wordt door MA gecontroleerd en fouten worden getoond. Gebruik Instellingen voor volume per kamer.
 
 ## Bijwerken en herstellen
 

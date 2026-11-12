@@ -306,3 +306,47 @@ describe("Spotify saved podcast and removed-item contracts", () => {
     expect(normalize(null, 7)).toMatchObject({ position: 7, playable: false });
   });
 });
+describe("combined device list", () => {
+  it("returns both playback routes, including separate devices with identical names", async () => {
+    const { hass, api } = setup(
+      { result: [{ id: "cast", name: "Room", is_active: true }] },
+      "spotifyplus",
+      "get_player_devices",
+    );
+    hass.states["media_player.room"].state = "playing";
+    const result = await api.allDevices("media_player.room", "spotify");
+    expect(result.devices).toHaveLength(2);
+    expect(result.devices.map((d) => d.provider)).toEqual([
+      "spotify",
+      "music_assistant",
+    ]);
+    expect(result.devices[1]).toMatchObject({ active: true, selected: true });
+  });
+  it("keeps MA devices when Spotify is unavailable and reports the failed source", async () => {
+    const { api } = setup({});
+    const result = await api.allDevices("media_player.room", "music_assistant");
+    expect(result.devices).toHaveLength(1);
+    expect(result.devices[0]).toMatchObject({
+      provider: "music_assistant",
+      active: false,
+      selected: true,
+    });
+    expect(result.warnings[0]).toContain("Spotify Connect");
+  });
+  it("excludes a Metz device even if its configured alias hides the real name", async () => {
+    const { api, hass } = setup(
+      { result: [] },
+      "spotifyplus",
+      "get_player_devices",
+    );
+    api.config = {
+      ...config,
+      ma_players: [{ entity: "media_player.room", name: "Bedroom" }],
+    };
+    hass.states["media_player.room"].attributes.friendly_name =
+      "Metz TV Slaapkamer";
+    expect(
+      (await api.allDevices("media_player.room", "spotify")).devices,
+    ).toEqual([]);
+  });
+});

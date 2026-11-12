@@ -1,7 +1,9 @@
-Implementeert de eerste installeerbare Dunk Music custom card voor een nieuw Home Assistant-muziekdashboard. Afspeellijsten openen zonder playback; individuele tracks spelen vanuit hun oorspronkelijke positie. SpotifyPlus, Music Assistant en radio delen een permanente speler met expliciete sessie- en apparaatkeuze.
+Levert Dunk Music v0.1.1 als installeerbare Home Assistant custom card met SpotifyPlus, Music Assistant, radio, verticale afspeellijsten en een permanente minispeler.
 
-Inbegrepen: TypeScript/Lit-broncode en gebouwde ES-module, responsive interface, Connect, MA-kamerbediening, uitgesloten Metz-apparaten, afzonderlijk Dunk Music Dark-thema, HACS-configuratie, volledig panel-dashboard, Nederlandse handleiding, tests en draft-releaseworkflow voor v0.1.0. Bestaande Liquid Glass-configuratie en HA-integraties zijn niet gewijzigd.
+De apparaatkeuze toont Spotify Connect en geconfigureerde Music Assistant-kamers in één lijst. Routes zijn expliciet gelabeld en lokale kamers blijven beschikbaar bij een Spotify-storing. Bij het kiezen van een niet-spelende Music Assistant-kamer blijft de actieve Spotify/iPhone-sessie zichtbaar. Bronkeuze en doelkamerkeuze starten of stoppen geen muziek. Als beide routes spelen, kan de gebruiker expliciet kiezen welke sessie wordt bediend.
 
-Validatie: 20 API-/unit-tests en 30 Chromium-browsertests geslaagd; TypeScript/build geslaagd; npm audit zonder kwetsbaarheden. CI voegt Firefox en WebKit toe. Lokale browserstartbeperkingen en alle niet live geteste HA-/Spotify-/MA-functies staan expliciet in docs/TESTING.md.
+Inbegrepen: TypeScript/Lit-broncode, gebouwde JS-module, HACS-configuratie, afzonderlijk Dunk Music Dark-thema, panel-dashboard, Nederlandse installatie-/updatehandleiding, tests en draft-releaseworkflow. Bestaande Home Assistant-configuratie en Liquid Glass zijn niet gewijzigd.
 
-API-grenzen: MA get_queue geeft alleen huidig/volgend item; MA-favorietenmutaties gaan via de bronapp. Google TV-entity met/zonder _2 en compatibele luidsprekergroepen moeten live bevestigd worden. Er zijn geen tests op echte afspeelapparaten uitgevoerd.
+Validatie: 23 API-tests en 45 lokale Chromium-scenario's geslaagd; CI voert daarnaast Firefox en WebKit uit (75 browserscenario's in totaal). TypeScript/build en npm audit zijn geslaagd. De gebruikersinstallatie is niet toegankelijk voor live playbacktests. De resterende live checks en API-grenzen staan in docs/TESTING.md.
+
+De PR blijft open. v0.1.0 blijft als eerder draft behouden; v0.1.1 wordt apart als draft met installatie- en bronarchief voorbereid.

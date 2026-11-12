@@ -7,10 +7,10 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Controle | Resultaat |
 | --- | --- |
 | TypeScript strict + productiebuild | Geslaagd |
-| Vitest API-/datatests | 20 geslaagd |
-| Chromium mobiel 390 × 844 | 10 geslaagd |
-| Chromium tablet 820 × 1180 | 10 geslaagd |
-| Chromium desktop 1440 × 1000 | 10 geslaagd |
+| Vitest API-/datatests | 23 geslaagd |
+| Chromium mobiel 390 × 844 | 15 geslaagd |
+| Chromium tablet 820 × 1180 | 15 geslaagd |
+| Chromium desktop 1440 × 1000 | 15 geslaagd |
 | Kaartbreedte 320px binnen groter browservenster | Geen horizontale overflow, mobiele containerindeling |
 | Visuele inspectie mobiel en desktop | Uitgevoerd met testdata; iconen vervangen door consistente SVG's |
 | npm audit, alle afhankelijkheden | 0 kwetsbaarheden |
@@ -18,7 +18,7 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Firefox lokaal | Browser start niet: `Could not find profile folder`, ook met alternatieve tijdelijke map; geen productasserties uitgevoerd |
 | WebKit lokaal | Browser start niet door ontbrekende systeemlibraries; geen productasserties uitgevoerd |
 
-GitHub Actions bevat naast de 30 Chromium-scenario's ook 10 Firefox- en 10 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
+GitHub Actions bevat naast de 45 Chromium-scenario's ook 15 Firefox- en 15 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
 
 ### Gedekte regressies
 
@@ -68,3 +68,7 @@ npm audit --audit-level=moderate
 ```
 
 Alleen Chromium op een beperkte host: `npx playwright test --project=mobile --project=tablet --project=desktop`. De fixture staat uitsluitend onder `tests/`; de productiekaart bevat geen voorbeeldmuziek of fake apparaten.
+
+## Update v0.1.1
+
+Nieuwe regressies: gecombineerde apparaatlijst, bronstoringen onafhankelijk afhandelen, MA-apparaten niet als Spotify-ID gebruiken, actieve iPhone behouden bij MA-keuze, actieve MA-kamer vinden en expliciete doelkamer niet overschrijven. Deze wijzigingen zijn met mocks getest; controle op de eigen Home Assistant blijft nodig.
