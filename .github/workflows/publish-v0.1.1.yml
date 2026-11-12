@@ -1,0 +1,26 @@
+name: Publish verified v0.1.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-v0.1.1.yml]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify prepared release and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view v0.1.1 --json isDraft,targetCommitish,assets > release.json
+          node - <<'JS'
+          const r = require('./release.json');
+          if (r.targetCommitish !== '7aecd6e10fcd1596e2dc437ad7b37cbb55f40a8f') throw new Error('Unexpected release commit');
+          for (const name of ['dunk-music.js', 'dunk-music-v0.1.1.zip', 'dunk-music-source-v0.1.1.zip', 'SHA256SUMS.txt']) {
+            if (!r.assets.some(a => a.name === name && a.state === 'uploaded' && a.size > 0)) throw new Error('Missing asset: ' + name);
+          }
+          JS
+          gh release edit v0.1.1 --draft=false --latest
