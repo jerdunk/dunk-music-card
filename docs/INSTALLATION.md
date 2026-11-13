@@ -12,7 +12,7 @@ Vereist: Home Assistant met service responses via WebSocket, recente SpotifyPlus
 
 1. Pak het meegeleverde installatiearchief uit. Kopieer `dist/dunk-music.js` naar `/config/www/dunk-music/dunk-music.js`. Maak de map indien nodig.
 2. Activeer geavanceerde modus in je profiel. Open Instellingen → Dashboards → Resources (soms onder het menu rechtsboven).
-3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.3` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
+3. Voeg `/local/dunk-music/dunk-music.js?v=0.1.4` toe, type **JavaScript-module**. `examples/resource.yaml` bevat de equivalente resource.
 4. Registreer niet tegelijk de handmatige en HACS-resource.
 
 ### HACS
@@ -78,6 +78,14 @@ Rollback: open het oorspronkelijke muziekdashboard. Verwijder eventueel alleen d
 
 ## Controle na update vanuit HACS
 
-Als in de kaart nog v0.1.0 staat, is de nieuwe module niet geladen. Download de nieuwste versie via HACS (zo nodig via het kaartmenu opnieuw downloaden). In Instellingen → Dashboards → Resources mag slechts één Dunk Music-resource staan: `/hacsfiles/dunk-music-card/dunk-music.js?v=0.1.3`, type JavaScript-module. Verwijder de oude `/local/dunk-music/dunk-music.js...`-vermelding. Laat het bestaande dashboard en de thema’s staan. Herlaad de browser volledig of de frontendcache van de Companion App. Controleer de zichtbare versietekst bovenaan de kaart.
+Als in de kaart nog v0.1.0 staat, is de nieuwe module niet geladen. Download de nieuwste versie via HACS (zo nodig via het kaartmenu opnieuw downloaden). In Instellingen → Dashboards → Resources mag slechts één Dunk Music-resource staan: `/hacsfiles/dunk-music-card/dunk-music.js?v=0.1.4`, type JavaScript-module. Verwijder de oude `/local/dunk-music/dunk-music.js...`-vermelding. Laat het bestaande dashboard en de thema’s staan. Herlaad de browser volledig of de frontendcache van de Companion App. Controleer de zichtbare versietekst bovenaan de kaart.
 
 Ontbreken lokale apparaten daarna nog? Controleer in Ontwikkelaarstools of `spotifyplus.get_spotify_connect_devices` beschikbaar is en apparaten retourneert; dit is een leesactie. Controleer de SpotifyPlus-instellingen voor lokale apparaatdetectie en netwerkbereikbaarheid. Apparaten die de backend niet ontdekt, kan de kaart niet verzinnen. Radio vereist een beschikbare Music Assistant-doelspeler en `music_assistant.play_media`; een ontbrekende zoek-/bibliotheekactie blokkeert de standaardzenders niet meer.
+
+## Bediening vanaf v0.1.4
+
+Bovenaan staat één apparaatknop met het actieve apparaat, bijvoorbeeld iPhone. Hiermee open je de gezamenlijke lijst voor Spotify Connect en Music Assistant. De oude bron-, kamer- en sessiedropdowns zijn verwijderd. Een kamer kiezen start geen muziek; de actieve iPhone blijft zichtbaar zolang alleen die speelt.
+
+De bibliotheekbron staat onder Instellingen → Bibliotheekbron. Radio heeft een eigen tab (op mobiel via Meer). Terug naar Home herstelt je gekozen bibliotheekbron, ook na herladen. Radio vermeldt de MA-kamer waarop de zender zal starten.
+
+Een nummer aanklikken geeft zowel zijn URI als de oorspronkelijke playlistpositie door. Bij oudere afspeelacties wordt actieve shuffle eerst via de ondersteunde speleractie uitgezet; als dat niet kan, verschijnt uitleg zonder een willekeurig nummer te starten. De aparte knop Shuffle afspelen blijft beschikbaar.

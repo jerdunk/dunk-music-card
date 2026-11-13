@@ -7,10 +7,10 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Controle | Resultaat |
 | --- | --- |
 | TypeScript strict + productiebuild | Geslaagd |
-| Vitest API-/datatests | 44 geslaagd |
-| Chromium mobiel 390 × 844 | 20 geslaagd |
-| Chromium tablet 820 × 1180 | 20 geslaagd |
-| Chromium desktop 1440 × 1000 | 20 geslaagd |
+| Vitest API-/datatests | 51 geslaagd |
+| Chromium mobiel 390 × 844 | 23 geslaagd |
+| Chromium tablet 820 × 1180 | 23 geslaagd |
+| Chromium desktop 1440 × 1000 | 23 geslaagd |
 | Kaartbreedte 320px binnen groter browservenster | Geen horizontale overflow, mobiele containerindeling |
 | Visuele inspectie mobiel en desktop | Uitgevoerd met testdata; iconen vervangen door consistente SVG's |
 | npm audit, alle afhankelijkheden | 0 kwetsbaarheden |
@@ -18,7 +18,7 @@ Datum: 12 november 2026. Alle geautomatiseerde afspeelacties gebruiken mocks. Ge
 | Firefox lokaal | Browser start niet: `Could not find profile folder`, ook met alternatieve tijdelijke map; geen productasserties uitgevoerd |
 | WebKit lokaal | Browser start niet door ontbrekende systeemlibraries; geen productasserties uitgevoerd |
 
-GitHub Actions bevat naast de 60 Chromium-scenario's ook 20 Firefox- en 20 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
+GitHub Actions bevat naast de 69 Chromium-scenario's ook 23 Firefox- en 23 WebKit-scenario's, met installatie van de vereiste OS-dependencies. De daadwerkelijke CI-uitkomst staat bij de pull request; lokaal geblokkeerde browsers tellen niet als geslaagde tests.
 
 ### Gedekte regressies
 
@@ -80,3 +80,7 @@ Lokale SpotifyPlus-directory getest met het daadwerkelijke PascalCase-responseco
 ## v0.1.3
 
 De gebruiker bevestigde `not a valid option at shuffle` bij radio en Spotify. Regressies dekken oudere MA- en SpotifyPlus-schema’s die dit veld afwijzen, native optionele veldondersteuning, standaard shuffle_set bij expliciet shuffle-afspelen, geen automatische playback-retry en leesbare gewone/geneste WebSocket-foutobjecten. 44 unit/API-tests en 60 lokale Chromium-scenario’s geslaagd; CI voert 100 browserscenario’s uit. De reparatie is nog niet op de echte Home Assistant-installatie afgespeeld. Controleer daar radio, Spotify-tracks/playlists en expliciet shuffle-afspelen na de update.
+
+## v0.1.4
+
+Regressies voor eerste Spotify-rij met shuffle aan/uit, expliciete offset-URI, oorspronkelijke posities 0/23/83, play-all zonder ongeldige playlist-offset, shuffle uitschakelen vóór playback en afbreken als die actie faalt. UI-tests gebruiken de apparaatknop en Instellingen, inclusief Radio → herladen → Home met behoud van bibliotheekbron. Verwachte volledige suite: 51 unit/API-tests, 69 lokale Chromium-tests, 115 browsertests in CI. Live te bevestigen: eerste nummer, later nummer, gefilterd nummer en shuffle-afspelen op de eigen SpotifyPlus-/MA-versies en speakers. Geen live HA-toegang beschikbaar.

@@ -1,5 +1,4 @@
 import { errorMessage } from "./errors";
-import { live } from "lit/directives/live.js";
 import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { icon } from "./icons";
 import { API } from "./api";
@@ -24,6 +23,7 @@ export class DunkMusicCard extends LitElement {
     hass: { attribute: false },
     config: { state: true },
     source: { state: true },
+    librarySource: { state: true },
     session: { state: true },
     view: { state: true },
     kind: { state: true },
@@ -43,6 +43,7 @@ export class DunkMusicCard extends LitElement {
   declare hass: Hass;
   declare config: Config;
   source: Source = "spotify";
+  librarySource: "spotify" | "music_assistant" = "spotify";
   session: Source = "spotify";
   view = "Home";
   kind = "playlist";
@@ -90,12 +91,20 @@ export class DunkMusicCard extends LitElement {
       ),
     };
     this.source = config.default_source ?? "spotify";
+    this.librarySource =
+      this.source === "music_assistant" ? "music_assistant" : "spotify";
     this.player =
       config.default_player ?? this.config.ma_players[0]?.entity ?? "";
     try {
       const saved = JSON.parse(localStorage.getItem(this.storageKey) ?? "{}");
       if (["spotify", "music_assistant", "radio"].includes(saved.source))
         this.source = saved.source;
+      if (
+        ["spotify", "music_assistant"].includes(
+          saved.librarySource ?? saved.source,
+        )
+      )
+        this.librarySource = saved.librarySource ?? saved.source;
       if (NAV.includes(saved.view)) this.view = saved.view;
       if (this.config.ma_players.some((p) => p.entity === saved.player))
         this.player = saved.player;
@@ -104,6 +113,8 @@ export class DunkMusicCard extends LitElement {
     }
     if (!this.config.ma_players.some((p) => p.entity === this.player))
       this.player = this.config.ma_players[0]?.entity ?? "";
+    if (this.source === "radio" && this.view !== "Instellingen")
+      this.view = "Radio";
     this.session = this.source;
     this.manualSession = false;
     this.manualPlayer = false;
@@ -129,6 +140,7 @@ export class DunkMusicCard extends LitElement {
         this.storageKey,
         JSON.stringify({
           source: this.source,
+          librarySource: this.librarySource,
           view: this.view,
           player: this.player,
         }),
@@ -287,7 +299,7 @@ export class DunkMusicCard extends LitElement {
     this.parent = undefined;
     this.query = "";
     this.filter = "";
-    if (view === "Radio") this.source = "radio";
+    this.source = view === "Radio" ? "radio" : this.librarySource;
     if (view === "Afspeellijsten" || view === "Home") this.kind = "playlist";
     if (view === "Favorieten" || view === "Recent afgespeeld")
       this.kind = "track";
@@ -295,6 +307,7 @@ export class DunkMusicCard extends LitElement {
     void this.load();
   }
   private changeSource(source: Source) {
+    if (source !== "radio") this.librarySource = source;
     this.source = source;
     this.navigate(source === "radio" ? "Radio" : "Home");
   }
@@ -659,9 +672,10 @@ export class DunkMusicCard extends LitElement {
       ${
         this.radioView
           ? html`<p class="muted">
-                Kies bovenaan een doelkamer en klik een zender om radio af te
-                spelen. De standaardzenders werken ook zonder opgeslagen
-                radiofavorieten.
+                Radio speelt op
+                ${this.players.find((p) => p.entity === this.player)?.name ?? this.hass.states[this.player]?.attributes.friendly_name ?? "een Music Assistant-kamer"}.
+                Kies een kamer via de apparaatknop en klik daarna een zender. De
+                standaardzenders werken ook zonder opgeslagen radiofavorieten.
               </p>
               <div class="tiles radio-tiles">
                 ${items
@@ -723,7 +737,22 @@ export class DunkMusicCard extends LitElement {
   private settings() {
     return html`<div class="settings">
       <h1>Instellingen</h1>
-      <p>Dunk Music 0.1.3</p>
+      <p>Dunk Music 0.1.4</p>
+      <label
+        >Bibliotheekbron
+        <select
+          aria-label="Bibliotheekbron"
+          .value=${this.librarySource}
+          @change=${(e: Event) => this.changeSource((e.target as HTMLSelectElement).value as Source)}
+        >
+          <option value="spotify">Spotify</option>
+          <option value="music_assistant">Music Assistant</option>
+        </select>
+      </label>
+      <p>
+        Radio open je via de Radio-tab. Kies een afspeelapparaat via de
+        apparaatknop bovenaan.
+      </p>
       <p>Configuratie via kaart-YAML. Geen tokens of wachtwoorden nodig.</p>
       <p>
         Spotify: <code>${this.config.spotify_entity}</code> —
@@ -901,43 +930,16 @@ export class DunkMusicCard extends LitElement {
       style=${`--accent:${accent};--height:${height}`}
     >
       <header ?inert=${!!this.sheet}>
-        <strong>Dunk Music<small class="version"> v0.1.3</small></strong
-        ><select
-          aria-label="Muziekbron"
-          .value=${this.source}
-          @change=${(e: Event) => this.changeSource((e.target as HTMLSelectElement).value as Source)}
+        <strong>Dunk Music<small class="version"> v0.1.4</small></strong>
+        <button
+          class="device-picker"
+          aria-label="Actief apparaat kiezen"
+          @click=${() => this.showDevices()}
         >
-          <option value="spotify">Spotify</option>
-          <option value="music_assistant">Music Assistant</option>
-          <option value="radio">Radio</option></select
-        >${
-          this.source !== "spotify"
-            ? html`<select
-                aria-label="Doelkamer"
-                .value=${this.player}
-                @change=${(e: Event) => {
-                  this.player = (e.target as HTMLSelectElement).value;
-                  this.manualPlayer = true;
-                  this.save();
-                  void this.load();
-                }}
-              >
-                ${this.players.map((p) => html`<option value=${p.entity} ?disabled=${!this.hass.states[p.entity] || ["unknown", "unavailable"].includes(this.hass.states[p.entity]?.state)}>${p.name ?? this.hass.states[p.entity]?.attributes.friendly_name ?? p.entity}</option>`)}
-              </select>`
-            : nothing
-        }<select
-          aria-label="Bedien afspeelsessie"
-          .value=${live(this.session === "spotify" ? "spotify" : "music_assistant")}
-          @change=${(e: Event) => {
-            this.session = (e.target as HTMLSelectElement).value as Source;
-            this.manualSession = true;
-            this.manualPlayer = false;
-            this.detectSession();
-          }}
-        >
-          <option value="spotify">Speler: Spotify</option>
-          <option value="music_assistant">Speler: Music Assistant</option>
-        </select>
+          ${icon("devices")}<span
+            >${this.session === "spotify" ? (a.source ?? a.friendly_name ?? "Apparaat kiezen") : (a.friendly_name ?? this.players.find((p) => p.entity === this.player)?.name ?? "Apparaat kiezen")}</span
+          >
+        </button>
       </header>
       <div
         ?inert=${!!this.sheet}

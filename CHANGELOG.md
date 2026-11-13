@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Gekozen Spotify-track krijgt een expliciete offset-URI, ook voor de eerste rij (positie 0) en gefilterde/gepagineerde lijsten.
+- Schakelt bestaande shuffle bij oudere services vóór normaal afspelen uit, met zichtbare fout als dit niet lukt.
+- Vervangt de dropdowns bovenaan door één apparaatknop. Bibliotheekbron staat onder Instellingen; Radio houdt een eigen tab.
+- Onthoudt de bibliotheekbron bij Radio en herladen; bestaande configuratie blijft bruikbaar.
+
 ## 0.1.3
 
 - Verhelpt afgewezen `shuffle`-parameters bij SpotifyPlus en Music Assistant: alleen verzenden als de actie het veld aanbiedt; nooit bij radio.

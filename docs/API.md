@@ -69,4 +69,10 @@ Radio: presets met gecontroleerde HTTP-audiostreams en gebundelde omroeplogo’s
 
 ## v0.1.3: afspeelcompatibiliteit
 
-`shuffle` wordt alleen aan SpotifyPlus- of MA-afspeelacties toegevoegd als het runtime serviceregister dit veld aanbiedt (ook binnen UI-veldgroepen). Radio krijgt het veld nooit. Gewoon afspelen behoudt bij oudere services de bestaande shufflemodus. Expliciet shuffle-afspelen gebruikt anders `media_player.shuffle_set` na succesvolle playback, uitsluitend als service en spelerfeature beschikbaar zijn; ontbrekende ondersteuning blokkeert de actie vooraf met uitleg. Playback wordt niet automatisch opnieuw geprobeerd. Gewone en geneste Home Assistant-foutobjecten worden naar een leesbare melding vertaald.
+`shuffle` wordt alleen aan SpotifyPlus- of MA-afspeelacties toegevoegd als het runtime serviceregister dit veld aanbiedt (ook binnen UI-veldgroepen). Radio krijgt het veld nooit. Vanaf v0.1.4 schakelt gewoon afspelen bij oudere services actieve shuffle eerst uit via `media_player.shuffle_set`, als de service en spelerfeature beschikbaar zijn. Als uitschakelen niet wordt ondersteund of faalt, wordt playback niet gestart. Expliciet shuffle-afspelen gebruikt anders `media_player.shuffle_set` na succesvolle playback, uitsluitend als service en spelerfeature beschikbaar zijn; ontbrekende ondersteuning blokkeert de actie vooraf met uitleg. Playback wordt niet automatisch opnieuw geprobeerd. Gewone en geneste Home Assistant-foutobjecten worden naar een leesbare melding vertaald.
+
+## v0.1.4: eerste track en bestaande shuffle
+
+SpotifyPlus SDK `PlayerMediaPlayContext` randomiseert offsetPosition bij een bestaande shufflemodus en laat offsetPosition=0 weg uit de Web API-request. Een geselecteerde track geeft daarom `offset_uri` én zijn oorspronkelijke `offset_position` mee: de URI heeft in het Web API-pad voorrang, terwijl de index behouden blijft voor lokale spelers. Play-all geeft geen track-offset mee. Afzonderlijk uitschakelen van shuffle wordt afgewacht vóór playback; geen retry bij een mislukte actie.
+
+Bron: [SpotifyWebApiPython spotifyclient.py, PlayerMediaPlayContext](https://github.com/thlucas1/SpotifyWebApiPython/blob/master/spotifywebapipython/spotifyclient.py). Browsertests modelleren de nulpositie-/shufflelogica; zij vervangen geen echte apparaatacceptatietest.

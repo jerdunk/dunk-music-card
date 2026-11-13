@@ -454,9 +454,19 @@ export class API {
     if (spotify) {
       let service = "player_media_play_tracks";
       let data: Data = { uris: item.uri };
-      if (parent && ["playlist", "album"].includes(parent.kind)) {
+      if (
+        parent &&
+        ["playlist", "album"].includes(parent.kind) &&
+        ["track", "episode"].includes(item.kind)
+      ) {
         service = "player_media_play_context";
-        data = { context_uri: parent.uri, offset_position: item.position };
+        // SpotifyPlus drops position zero and can randomize positions with shuffle.
+        // URI takes precedence in its Web API path; position also supports local players.
+        data = {
+          context_uri: parent.uri,
+          offset_uri: item.uri,
+          offset_position: item.position,
+        };
       } else if (["playlist", "album", "artist", "show"].includes(item.kind)) {
         service = "player_media_play_context";
         data = { context_uri: item.uri };
@@ -499,7 +509,10 @@ export class API {
     // Both integrations have older versions that reject even shuffle:false.
     const nativeShuffle =
       allowShuffle && this.hasField(domain, service, "shuffle");
-    const legacyShuffle = allowShuffle && shuffle && !nativeShuffle;
+    const legacyShuffle =
+      allowShuffle &&
+      !nativeShuffle &&
+      (shuffle || this.hass.states[entity]?.attributes.shuffle === true);
     if (
       legacyShuffle &&
       (!this.has("media_player", "shuffle_set") ||
@@ -508,9 +521,17 @@ export class API {
         ))
     ) {
       throw new Error(
-        "Shuffle afspelen wordt niet ondersteund door deze speler. Gebruik Alles afspelen.",
+        shuffle
+          ? "Shuffle afspelen wordt niet ondersteund door deze speler. Gebruik Alles afspelen."
+          : "Schakel shuffle uit in de bronapp om vanaf het gekozen nummer af te spelen.",
       );
     }
+    // Disable an existing shuffle session before starting an explicitly chosen track.
+    if (legacyShuffle && !shuffle)
+      await this.call("media_player", "shuffle_set", {
+        entity_id: entity,
+        shuffle: false,
+      });
     const result = await this.call(
       domain,
       service,
@@ -518,7 +539,7 @@ export class API {
       false,
       target,
     );
-    if (legacyShuffle)
+    if (legacyShuffle && shuffle)
       await this.call("media_player", "shuffle_set", {
         entity_id: entity,
         shuffle: true,
